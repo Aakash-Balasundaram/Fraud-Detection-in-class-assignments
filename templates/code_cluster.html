@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Code Clustering</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f0f2f5; 
+            text-align: center;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            text-align: left; 
+        }
+        .card { 
+            background: white; 
+            padding: 20px; 
+            margin: 15px 0; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .file-list { 
+            list-style: none; 
+            padding: 0; 
+        }
+        .file-item { 
+            padding: 8px; 
+            margin: 5px 0; 
+            background: #f8f9fa; 
+            border-radius: 4px; 
+            text-align: left;
+        }
+        button { 
+            padding: 10px 20px; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            transition: 0.3s ease-in-out; 
+        }
+        button:hover { background: #0056b3; }
+        .stats { 
+            padding: 15px; 
+            background: #e9ecef; 
+            border-radius: 4px; 
+            margin: 15px 0; 
+            font-weight: bold; 
+            text-align: center; 
+        }
+        .loading { 
+            display: none; 
+            color: #007bff; 
+            font-weight: bold; 
+            margin-top: 10px; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Python Code Cluster Analysis</h1>
+        <div class="card">
+            <input type="file" id="codeInput" webkitdirectory directory multiple accept=".py">
+            <button onclick="analyzeCode()">Analyze Folder</button>
+            <p id="uploadMessage" style="color: green; display: none;">Files uploaded successfully!</p>
+        </div>
+        <a href="{{ url_for('index') }}">Home</a>
+
+        <div id="uploadedFiles" class="card">
+            <h3>Uploaded Files: <span id="fileCount">(0)</span></h3>
+            <ul class="file-list"></ul>
+        </div>
+
+        <p id="loading" class="loading">Analyzing files, please wait...</p>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function displayUploadedFiles(files) {
+            const fileContainer = document.querySelector("#uploadedFiles .file-list");
+            const fileCount = document.getElementById("fileCount");
+            const uploadMessage = document.getElementById("uploadMessage");
+
+            fileContainer.innerHTML = '';  
+            fileCount.textContent = `(${files.length})`; 
+
+            if (files.length === 0) {
+                fileContainer.innerHTML = '<li class="file-item">No files uploaded.</li>';
+                uploadMessage.style.display = "none";
+                return;
+            }
+
+            uploadMessage.style.display = "block";  
+
+            files.forEach(file => {
+                const listItem = document.createElement('li');
+                listItem.className = 'file-item';
+                listItem.textContent = file.name;
+                fileContainer.appendChild(listItem);
+            });
+        }
+
+        async function analyzeCode() {
+            const files = document.getElementById('codeInput').files;
+            if (files.length === 0) {
+                alert('Please select a folder containing Python files');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';  
+
+            const readFile = (file) => new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve({
+                    name: file.webkitRelativePath,
+                    content: e.target.result
+                });
+                reader.readAsText(file);
+            });
+
+            try {
+                const filesData = await Promise.all(Array.from(files).map(readFile));
+                console.log("Selected files:", filesData);
+                displayUploadedFiles(filesData);
+
+                const response = await fetch('/cluster_python_folder/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: filesData })
+                });
+
+                document.getElementById('loading').style.display = 'none';
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log("Response from backend:", data);
+                displayResults(data.clusters);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Analysis failed - check console for details');
+            }
+        }
+
+        function displayResults(clusters) {
+            const container = document.getElementById('results');
+            container.innerHTML = '';  
+
+            if (!clusters || clusters.length === 0) {
+                container.innerHTML = '<div class="card">No clusters found</div>';
+                return;
+            }
+
+            clusters.forEach(cluster => {
+                const clusterDiv = document.createElement('div');
+                clusterDiv.className = 'card';
+                clusterDiv.innerHTML = `
+                    <h3>Cluster ${cluster.cluster_id} (${cluster.similarity}% similarity)</h3>
+                    <p>Files (${cluster.names.length}):</p>
+                    <ul class="file-list">
+                        ${cluster.names.map(name => `<li class="file-item">${name}</li>`).join('')}
+                    </ul>
+                `;
+                container.appendChild(clusterDiv);
+            });
+        }
+    </script>
+</body>
+</html>

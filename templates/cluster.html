@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Clustering</title>
+    <style>
+        body { 
+            font-family: 'Arial', sans-serif; 
+            background-color: #f4f4f9; 
+            padding: 20px; 
+            text-align: center; 
+        }
+        h2, h3 { color: #333; }
+        .container { 
+            max-width: 800px; 
+            margin: auto; 
+            background: #ffffff; 
+            padding: 20px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
+        }
+        
+        /* Navigation Bar */
+        .navbar {
+            background-color: #007bff;
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .navbar a:hover {
+            background-color: #0056b3;
+            border-radius: 5px;
+        }
+
+        button {
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 5px;
+            cursor: pointer; 
+            font-size: 16px; 
+            transition: background 0.3s ease;
+        }
+        button:hover { background: #0056b3; }
+
+        #uploadedFiles {
+            list-style: none;
+            padding: 0;
+            margin-top: 10px;
+        }
+        #uploadedFiles li {
+            background: #e9ecef;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            text-align: left;
+        }
+
+        .cluster-card {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .cluster-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .cluster-card h3 {
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .cluster-card p {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('ai_detection') }}">AI Content Detection</a>
+    </div>
+
+    <div class="container">
+        <h2>Upload Folder of Documents</h2>
+        <input type="file" id="folderInput" webkitdirectory directory multiple>
+        <button id="checkSimilarity">Document Cluster</button>
+
+        <h3>Uploaded Files:</h3>
+        <ul id="uploadedFiles"></ul>
+
+        <h3>Clusters:</h3>
+        <div id="clusterResults"></div>
+    </div>
+
+    <script>
+        document.getElementById("folderInput").addEventListener("change", function () {
+            const files = Array.from(this.files);
+            const uploadedFilesList = document.getElementById("uploadedFiles");
+            uploadedFilesList.innerHTML = "";
+
+            files.forEach(file => {
+                const listItem = document.createElement("li");
+                listItem.textContent = file.name;
+                uploadedFilesList.appendChild(listItem);
+            });
+        });
+
+        document.getElementById("checkSimilarity").addEventListener("click", function () {
+            const files = document.getElementById("folderInput").files;
+            if (files.length === 0) {
+                alert("Please upload some files.");
+                return;
+            }
+
+            let fileData = [];
+            const readerPromises = Array.from(files).map(file => {
+                return new Promise(resolve => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve({ name: file.name, content: reader.result });
+                    reader.readAsText(file);
+                });
+            });
+
+            Promise.all(readerPromises).then(filesData => {
+                fetch("{{ url_for('cluster_files') }}", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ files: filesData })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const clusterResults = document.getElementById("clusterResults");
+                    clusterResults.innerHTML = "";
+
+                    if (data.error) {
+                        clusterResults.innerHTML = `<p style="color: red;">${data.error}</p>`;
+                        return;
+                    }
+
+                    if (!data.length) {
+                        clusterResults.innerHTML = "<p>No clusters formed.</p>";
+                        return;
+                    }
+
+                    data.forEach(cluster => {
+                        const clusterDiv = document.createElement("div");
+                        clusterDiv.classList.add("cluster-card");
+                        clusterDiv.innerHTML = `
+                            <h3>Cluster ${cluster.cluster_id} (Similarity: ${cluster.avg_similarity}%)</h3>
+                            <p>${cluster.names.join(", ")}</p>
+                        `;
+                        clusterResults.appendChild(clusterDiv);
+                    });
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("Something went wrong. Check console for details.");
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>
