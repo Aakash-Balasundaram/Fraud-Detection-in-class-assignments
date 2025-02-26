@@ -399,12 +399,7 @@ def file_test():
 #---------------------------------------------------------------------------------------------#
 
 # Set logging level
-logging.basicConfig(level=logging.INFO)
-
-# Detect device (GPU or CPU)
 device = 0 if torch.cuda.is_available() else -1
-
-# Load GraphCodeBERT model and tokenizer
 feature_extractor = pipeline(
     "feature-extraction",
     model="microsoft/graphcodebert-base",
@@ -413,33 +408,23 @@ feature_extractor = pipeline(
 )
 
 def extract_embeddings(code_snippets):
-    """
-    Extract CLS token embeddings using GraphCodeBERT.
-    """
     try:
         logging.info(f"Extracting embeddings for {len(code_snippets)} snippets")
         embeddings = feature_extractor(code_snippets, truncation=True, padding=True, max_length=512)
-
+        
         if not embeddings or len(embeddings) == 0:
             logging.error("No embeddings extracted. Check input data or model loading.")
             return np.array([])
 
-        cls_embeddings = [np.array(embed).squeeze()[0] for embed in embeddings]
+        cls_embeddings = np.array([np.array(embed).squeeze()[0] for embed in embeddings])
+        logging.info(f"Extracted {cls_embeddings.shape[0]} embeddings with shape {cls_embeddings.shape}")
 
-        logging.info(f"Extracted {len(cls_embeddings)} embeddings with shape {cls_embeddings[0].shape if cls_embeddings else 'N/A'}")
-
-        return np.array(cls_embeddings)
-
+        return cls_embeddings
     except Exception as e:
         logging.error(f"Error extracting embeddings: {str(e)}", exc_info=True)
         return np.array([])
 
-
-def cluster_code_files(files, threshold=0.8):
-    """
-    Cluster files using cosine similarity without DBSCAN.
-    Groups files where similarity > threshold into the same cluster.
-    """
+def cluster_code_files(files, threshold=0.85):
     try:
         if not files or not all(isinstance(f, dict) for f in files):
             logging.error("Invalid file format received for clustering.")
@@ -447,71 +432,58 @@ def cluster_code_files(files, threshold=0.8):
 
         texts = [f.get("content", "").strip() for f in files]
         names = [f.get("name", "") for f in files]
-
+        
         if not any(texts):
             logging.warning("No valid file contents found.")
             return []
 
         embeddings = extract_embeddings(texts)
-
         if embeddings.size == 0:
             logging.error("Embeddings are empty. Clustering cannot proceed.")
             return []
-
-        # Normalize embeddings for cosine similarity
+        
         embeddings = normalize(embeddings, axis=1)
-
-        # Compute cosine similarity matrix
         cosine_sim = cosine_similarity(embeddings)
         logging.info(f"Cosine Similarity Matrix:\n{cosine_sim}")
 
-        # Clustering based on similarity threshold (manual merging)
         clusters = []
         assigned = set()
-
+        
         for i, name in enumerate(names):
             if name in assigned:
-                continue  # Skip if already clustered
+                continue  
             
-            new_cluster = [name]
+            new_cluster = {name}
             assigned.add(name)
-
+            
             for j in range(len(names)):
-                if i != j and cosine_sim[i, j] > threshold:
-                    new_cluster.append(names[j])
+                if i != j and names[j] not in assigned and cosine_sim[i, j] > threshold:
+                    new_cluster.add(names[j])
                     assigned.add(names[j])
-
-            clusters.append(new_cluster)
-
-        # Compute average similarity for each cluster
+            
+            clusters.append(list(new_cluster))
+        
         cluster_list = []
         for cluster_id, filenames in enumerate(clusters):
             indices = [names.index(f) for f in filenames]
             avg_similarity = round(np.mean(cosine_sim[np.ix_(indices, indices)]), 2) * 100
-
             cluster_list.append({
-                "cluster_id": int(cluster_id),
+                "cluster_id": cluster_id,
                 "names": filenames,
                 "similarity": avg_similarity
             })
 
         logging.info(f"Clusters JSON: {json.dumps(cluster_list, indent=4)}")
-
         return cluster_list
-
     except Exception as e:
         logging.error(f"Clustering error: {str(e)}", exc_info=True)
         return []
 
-
 @app.route('/cluster_python_folder/', methods=['POST'])
 def cluster_python_folder():
-    """
-    API endpoint for clustering code files.
-    """
     try:
         data = request.get_json()
-        logging.info(f"Received Data: {json.dumps(data, indent=2)}")  # Log received data
+        logging.info(f"Received Data: {json.dumps(data, indent=2)}")
         
         if not data or "files" not in data:
             return jsonify({"error": "Invalid request format"}), 400
@@ -521,16 +493,15 @@ def cluster_python_folder():
             return jsonify({"error": "Files must be a list"}), 400
 
         clusters = cluster_code_files(files_data)
-
         if not clusters:
             logging.warning("No clusters were formed. Verify threshold or embeddings.")
-
+        
         logging.info(f"Clusters formed: {clusters}")
         return jsonify({"clusters": clusters}), 200
-
     except Exception as e:
         logging.error(f"API error: {str(e)}", exc_info=True)
         return jsonify({"error": "Internal server error"}), 500
+
 
 
 if __name__ == '__main__':
