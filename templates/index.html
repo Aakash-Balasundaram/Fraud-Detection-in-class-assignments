@@ -60,30 +60,31 @@
     </style>
 </head>
 <body>
-
     <div class="navbar">
         <a href="{{ url_for('index') }}">Home</a>
         <a href="{{ url_for('cluster') }}">Document Clustering</a>
         <a href="{{ url_for('ai_detection') }}">AI Content Detection</a>
         <a href="{{ url_for('code_cluster') }}">Code Document Clustering</a>
+        <a href="{{ url_for('plagiarism_checker') }}">Plagiarism Checker</a>
     </div>
-
     <div class="container">
         <h2>Welcome to AI Tools</h2>
-        <p>Explore our AI-powered tools for document clustering and AI content detection.</p>
-
+        <p>Explore our AI-powered tools for document clustering, AI content detection, and plagiarism checking.</p>
         <div class="feature-box">
             <h3>📂 Document Clustering</h3>
             <p>Automatically group similar documents based on their content.</p>
             <a href="{{ url_for('cluster') }}">Go to Clustering →</a>
         </div>
-
         <div class="feature-box">
             <h3>🤖 AI Content Detector</h3>
             <p>Check if a given text is written by AI or a human.</p>
             <a href="{{ url_for('ai_detection') }}">Go to AI Detector →</a>
         </div>
+        <div class="feature-box">
+            <h3>🔍 Plagiarism Checker</h3>
+            <p>Detect plagiarism by comparing text against online sources.</p>
+            <a href="{{ url_for('plagiarism_checker') }}">Go to Plagiarism Checker →</a>
+        </div>
     </div>
-
 </body>
 </html>

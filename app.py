@@ -1,18 +1,41 @@
 import torch
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, url_for
 import json
 import logging
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from transformers import BertTokenizer, BertForSequenceClassification,AutoTokenizer, AutoModel
+from transformers import BertTokenizer, BertForSequenceClassification, AutoTokenizer, AutoModel
 from transformers import pipeline
 from sklearn.preprocessing import normalize
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 import torch.nn.functional as F
+import re
+import math
+from collections import Counter
+import nltk
+from nltk.corpus import stopwords
+from docx import Document
+import PyPDF2
+import os
+from googleapiclient.discovery import build
 
 
 app = Flask(__name__)
+
+# Configure upload folder
+UPLOAD_FOLDER = 'uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Download NLTK data
+nltk.download('stopwords')
+nltk.download('wordnet')
+
+# Configure API keys for Google Custom Search
+searchEngine_API = 'AIzaSyCAeR7_6TTKzoJmSwmOuHZvKcVg_lhqvCc'
+searchEngine_Id = '758ad3e78879f0e08'
 
 # Render HTML Pages
 @app.route('/')
@@ -30,6 +53,10 @@ def ai_detection():
 @app.route('/code_cluster/')
 def code_cluster():
     return render_template("code_cluster.html")
+
+@app.route('/plagiarism_checker/')
+def plagiarism_checker():
+    return render_template("plagiarism_checker.html", link={}, percent=0)
 
 # Function to create clusters based on cosine similarity
 def create_clusters(texts, threshold=0.6):
@@ -131,7 +158,240 @@ def detect_ai_content():
 
 
 #---------------------------------------------------------------------------------------------#
+# PLAGIARISM DETECTION FUNCTIONS
+#---------------------------------------------------------------------------------------------#
 
+WORD = re.compile(r'\w+')
+
+def get_cosine(vec1, vec2):
+    """Returns cosine similarity of two vectors"""
+    intersection = set(vec1.keys()) & set(vec2.keys())
+    matchWords = {}
+    for i in intersection:
+        if vec1[i] > vec2[i]:
+            matchWords[i] = vec2[i]
+        else:
+            matchWords[i] = vec1[i]
+    
+    # calculating numerator
+    numerator = sum([vec1[x] * matchWords[x] for x in intersection])
+    
+    # calculating denominator
+    sum1 = sum([vec1[x]**2 for x in vec1.keys()])
+    sum2 = sum([matchWords[x]**2 for x in matchWords.keys()])
+    
+    denominator = math.sqrt(sum1) * math.sqrt(sum2)
+    
+    # checking for divide by zero
+    if denominator == 0:
+        return 0.0
+    else:
+        return float(numerator) / denominator
+
+def text_to_vector(text):
+    """Converts given text into a vector"""
+    words = WORD.findall(text)
+    return Counter(words)
+
+def cosineSim(text1, text2):
+    """Returns cosine similarity of two texts"""
+    t1 = text1.lower()
+    t2 = text2.lower()
+    vector1 = text_to_vector(t1)
+    vector2 = text_to_vector(t2)
+    cosine = get_cosine(vector1, vector2)
+    return cosine
+
+def getQueries(text, n):
+    """Splits text into n-gram queries for web search"""
+    sentenceEnders = re.compile("['.!?]")
+    sentenceList = sentenceEnders.split(text)
+    sentencesplits = []
+    en_stops = set(stopwords.words('english'))
+
+    for sentence in sentenceList:
+        x = re.compile(r'\W+', re.UNICODE).split(sentence)
+        x = [word for word in x if word.lower() not in en_stops and word != '']
+        sentencesplits.append(x)
+    
+    finalq = []
+    for sentence in sentencesplits:
+        l = len(sentence)
+        if l > n:
+            l = int(l/n)
+            index = 0
+            for i in range(0, l):
+                finalq.append(sentence[index:index+n])
+                index = index + n-1
+                if index+n > l:
+                    index = l-n-1
+            if index != len(sentence):
+                finalq.append(sentence[len(sentence)-index:len(sentence)])
+        else:
+            if l > 4:
+                finalq.append(sentence)
+    
+    return finalq
+
+def searchWeb(text, output, c):
+    """Searches web for similar content using Google Custom Search API"""
+    try:
+        resource = build("customsearch", 'v1', developerKey=searchEngine_API).cse()
+        result = resource.list(q=text, cx=searchEngine_Id).execute()
+        searchInfo = result['searchInformation']
+        
+        if int(searchInfo['totalResults']) > 0:
+            maxSim = 0
+            itemLink = ''
+            numList = len(result['items']) 
+            if numList >= 5:
+                numList = 5
+            
+            for i in range(0, numList):
+                item = result['items'][i]
+                content = item['snippet']
+                simValue = cosineSim(text, content)
+                if simValue > maxSim:
+                    maxSim = simValue
+                    itemLink = item['link']
+                if item['link'] in output:
+                    itemLink = item['link']
+                    break
+            
+            if itemLink in output:
+                print('if', maxSim)
+                output[itemLink] = output[itemLink] + 1
+                c[itemLink] = ((c[itemLink] * (output[itemLink]-1) + maxSim)/(output[itemLink]))
+            else:
+                print('else', maxSim)
+                print(text)
+                print(itemLink)
+                output[itemLink] = 1
+                c[itemLink] = maxSim
+    
+    except Exception as e:
+        print(text)
+        print(e)
+        print('error')
+        return output, c, 1
+    
+    return output, c, 0
+
+def findSimilarity(text):
+    """Main function to find similarity with web content"""
+    # n-grams N VALUE SET HERE
+    n = 9
+    queries = getQueries(text, n)
+    print('GetQueries task complete')
+    q = [' '.join(d) for d in queries]
+    output = {}
+    c = {}
+    
+    while "" in q:
+        q.remove("")
+    
+    count = len(q)
+    if count > 100:
+        count = 100
+    
+    numqueries = count
+    for s in q[0:count]:
+        output, c, errorCount = searchWeb(s, output, c)
+        print('Web search task complete')
+        numqueries = numqueries - errorCount
+    
+    totalPercent = 0
+    outputLink = {}
+    
+    for link in output:
+        percentage = (output[link]*c[link]*100)/numqueries
+        if percentage > 10:
+            totalPercent = totalPercent + percentage
+            prevlink = link
+            outputLink[link] = percentage
+        elif 'prevlink' in locals() and len(prevlink) != 0:
+            totalPercent = totalPercent + percentage
+            outputLink[prevlink] = outputLink[prevlink] + percentage
+        elif c[link] == 1:
+            totalPercent = totalPercent + percentage
+        print(link, totalPercent)
+
+    print(count, numqueries)
+    print(totalPercent, outputLink)
+    print("\nDone!")
+    
+    return totalPercent, outputLink
+
+def extract_text_from_txt(file):
+    """Extract text from a .txt file"""
+    return file.read().decode('utf-8')
+
+def extract_text_from_docx(file):
+    """Extract text from a .docx file"""
+    doc = Document(file)
+    text = ""
+    for para in doc.paragraphs:
+        text += para.text + "\n"
+    return text
+
+def extract_text_from_pdf(file_path):
+    """Extract text from a .pdf file"""
+    text = ""
+    try:
+        with open(file_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            for page_num in range(len(pdf_reader.pages)):
+                page = pdf_reader.pages[page_num]
+                text += page.extract_text()
+    except Exception as e:
+        print(f"Error extracting text from PDF: {e}")
+    return text
+
+def process_file(file):
+    """Process uploaded file and extract text based on file type"""
+    filename = file.filename
+    text = ""
+    
+    if filename.endswith('.txt'):
+        text = extract_text_from_txt(file)
+    elif filename.endswith('.docx'):
+        text = extract_text_from_docx(file)
+    elif filename.endswith('.pdf'):
+        # Save the file temporarily to process with PyPDF2
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+        text = extract_text_from_pdf(file_path)
+        # Clean up the temporary file
+        os.remove(file_path)
+    
+    return text
+
+@app.route('/test', methods=['POST'])
+def test():
+    """Web search with text input"""
+    print("Plagiarism test with text input")
+    if 'q' in request.form and request.form['q']:
+        percent, link = findSimilarity(request.form['q'])
+        percent = round(percent, 2)
+        return render_template('plagiarism_detector.html', link=link, percent=percent)
+    return redirect(url_for('plagiarism_checker'))
+
+@app.route('/file_test', methods=['POST'])
+def file_test():
+    """Web search with file input"""
+    print("Plagiarism test with file input")
+    if 'docfile' in request.files:
+        file = request.files['docfile']
+        if file.filename != '':
+            text = process_file(file)
+            if text:
+                percent, link = findSimilarity(text)
+                percent = round(percent, 2)
+                return render_template('plagiarism_detector.html', link=link, percent=percent)
+    
+    return redirect(url_for('plagiarism_checker'))
+
+#---------------------------------------------------------------------------------------------#
 
 # Set logging level
 logging.basicConfig(level=logging.INFO)
@@ -266,7 +526,6 @@ def cluster_python_folder():
     except Exception as e:
         logging.error(f"API error: {str(e)}", exc_info=True)
         return jsonify({"error": "Internal server error"}), 500
-
 
 
 if __name__ == '__main__':
