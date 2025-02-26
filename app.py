@@ -54,6 +54,10 @@ def ai_detection():
 def code_cluster():
     return render_template("code_cluster.html")
 
+@app.route('/trend_analysis/')
+def trend_analysis():
+    return render_template("trend_analysis.html")
+
 @app.route('/plagiarism_checker/')
 def plagiarism_checker():
     return render_template("plagiarism_checker.html", link={}, percent=0)

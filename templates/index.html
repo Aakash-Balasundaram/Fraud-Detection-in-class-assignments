@@ -1,91 +1,348 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home - AI Tools</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fraud Detection System | Home</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            text-align: center;
-            padding: 0px;
-            margin: 0px
+      :root {
+        --primary: #1a73e8;
+        --primary-dark: #0d47a1;
+        --secondary: #ff6d00;
+        --danger: #e53935;
+        --success: #43a047;
+        --warning: #ffa000;
+        --gray-light: #f5f7fa;
+        --gray: #e0e0e0;
+        --gray-dark: #757575;
+        --dark: #263238;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: var(--gray-light);
+        color: var(--dark);
+        line-height: 1.6;
+      }
+
+      .wrapper {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .navbar {
+        background-color: var(--primary);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+
+      .navbar-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 20px;
+      }
+
+      .navbar-brand {
+        display: flex;
+        align-items: center;
+        padding: 15px 0;
+      }
+
+      .navbar-brand h1 {
+        color: white;
+        font-size: 1.5rem;
+        margin-left: 10px;
+      }
+
+      .navbar-brand i {
+        font-size: 1.8rem;
+        color: white;
+      }
+
+      .navbar-menu {
+        display: flex;
+        gap: 15px;
+      }
+
+      .navbar-menu a {
+        color: white;
+        text-decoration: none;
+        padding: 15px 15px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+      }
+
+      .navbar-menu a:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      .navbar-menu a.active {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .main-content {
+        flex: 1;
+        padding: 30px 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      .hero-section {
+        text-align: center;
+        margin-bottom: 50px;
+      }
+
+      .page-title {
+        margin-bottom: 15px;
+        color: var(--primary-dark);
+        font-size: 2.2rem;
+      }
+
+      .page-subtitle {
+        color: var(--gray-dark);
+        margin-bottom: 30px;
+        font-weight: normal;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .cards-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+        margin-top: 30px;
+      }
+
+      .card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+        padding: 30px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      }
+
+      .card-icon {
+        font-size: 2.5rem;
+        color: var(--primary);
+        margin-bottom: 20px;
+      }
+
+      .card-title {
+        font-size: 1.3rem;
+        margin-bottom: 15px;
+        color: var(--primary-dark);
+      }
+
+      .card-description {
+        color: var(--gray-dark);
+        margin-bottom: 25px;
+        flex-grow: 1;
+      }
+
+      .card-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.3s ease;
+      }
+
+      .card-link:hover {
+        color: var(--primary-dark);
+      }
+
+      .card-link i {
+        font-size: 0.8rem;
+      }
+
+      .footer {
+        background-color: var(--dark);
+        color: white;
+        padding: 20px;
+        text-align: center;
+        font-size: 0.9rem;
+        margin-top: auto;
+      }
+
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        .navbar-container {
+          flex-direction: column;
+          padding: 8px;
         }
-        .container {
-            max-width: 800px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+
+        .navbar-brand {
+          margin-bottom: 10px;
+          margin-left: 0px;
+          font-size: 24px;
+          margin-right: 3px;
         }
-        .navbar {
-            background-color: #007bff;
-            padding: 10px;
-            text-align: center;
-            margin-bottom: 20px;
+
+        .navbar-menu {
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 5px;
         }
-        .navbar a {
-            color: white;
-            text-decoration: none;
-            padding: 10px 15px;
-            font-size: 18px;
-            font-weight: bold;
+
+        .navbar-menu a {
+          padding: 10px;
+          font-size: 0.85rem;
         }
-        .navbar a:hover {
-            background-color: #0056b3;
-            border-radius: 5px;
+
+        .page-title {
+          font-size: 1.8rem;
         }
-        .feature-box {
-            background: #e9ecef;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+        .cards-container {
+          grid-template-columns: 1fr;
         }
-        .feature-box:hover {
-            transform: scale(1.02);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-        .feature-box a {
-            text-decoration: none;
-            font-size: 18px;
-            font-weight: bold;
-            color: #007bff;
-        }
-        .feature-box a:hover {
-            text-decoration: underline;
-        }
+      }
     </style>
-</head>
-<body>
-    <div class="navbar">
-        <a href="{{ url_for('index') }}">Home</a>
-        <a href="{{ url_for('cluster') }}">Document Clustering</a>
-        <a href="{{ url_for('ai_detection') }}">AI Content Detection</a>
-        <a href="{{ url_for('code_cluster') }}">Code Document Clustering</a>
-        <a href="{{ url_for('plagiarism_checker') }}">Plagiarism Checker</a>
+  </head>
+  <body>
+    <div class="wrapper">
+      <nav class="navbar">
+        <div class="navbar-container">
+          <div class="navbar-brand">
+            <i class="fas fa-shield-alt"></i>
+            <h1>Fraud Detector</h1>
+          </div>
+          <div class="navbar-menu">
+            <a class="font-size:20px" href="{{ url_for('cluster') }}"><i class="fas fa-layer-group"></i> Text Cluster Similarity</a
+            >
+            <a class="font-size:20px" href="{{ url_for('ai_detection') }}"
+              ><i class="fas fa-robot"></i> AI Content Detection</a
+            >
+            <a class="font-size:20px" href="{{ url_for('code_cluster') }}"
+              ><i class="fas fa-code"></i> Code Cluster Similarity</a
+            >
+            <a class="font-size:20px" href="{{ url_for('plagiarism_checker') }}"
+              ><i class="fas fa-copy"></i> Plagiarism Checker</a
+            >
+            <a class="font-size:20px" href="{{ url_for('trend_analysis') }}"
+            ><i class="fas fa-copy"></i> Trend Analysis</a
+            >
+          </div>
+        </div>
+      </nav>
+
+      <main class="main-content">
+        <section class="hero-section">
+          <h1 class="page-title">Welcome to AI Tools</h1>
+          <p class="page-subtitle">
+            Explore our AI-powered tools for document clustering, AI content
+            detection, and plagiarism checking.
+          </p>
+        </section>
+
+        <div class="cards-container">
+            <div class="card">
+              <i class="fas fa-layer-group card-icon"></i>
+              <h2 class="card-title">📂 Document Clustering</h2>
+              <p class="card-description">
+                Automatically group similar documents based on their content.
+                Detect patterns, similarities, and relationships between texts
+                using advanced AI analysis.
+              </p>
+            </div>
+          
+            <div class="card">
+              <i class="fas fa-robot card-icon"></i>
+              <h2 class="card-title">🤖 AI Content Detector</h2>
+              <p class="card-description">
+                Check if a given text is written by AI or a human. Identify
+                patterns and markers typical of AI-generated content to verify
+                authenticity.
+              </p>
+            </div>
+          
+            <div class="card">
+              <i class="fas fa-code card-icon"></i>
+              <h2 class="card-title">💻 Code Similarity Analysis</h2>
+              <p class="card-description">
+                Compare code snippets to identify similarities, potential code
+                reuse, and detect unauthorized copying in programming assignments
+                or projects.
+              </p>
+            </div>
+          
+            <div class="card">
+              <i class="fas fa-copy card-icon"></i>
+              <h2 class="card-title">🔍 Plagiarism Checker</h2>
+              <p class="card-description">
+                Detect plagiarism by comparing text against online sources. Ensure
+                content originality and avoid copyright issues with our thorough
+                analysis.
+              </p>
+            </div>
+          
+            <div class="card">
+              <i class="fas fa-chart-line card-icon"></i>
+              <h2 class="card-title">📊 Trend Analysis</h2>
+              <p class="card-description">
+                Analyze fraud trends with interactive charts and tables. Identify patterns 
+                in assignment risks using bar and pie charts, track plagiarism and AI detection
+                percentages, and gain insights into evolving fraud patterns for informed decision-making.
+              </p>
+            </div>
+          </div>
+          
+      </main>
     </div>
-    <div class="container">
-        <h2>Welcome to AI Tools</h2>
-        <p>Explore our AI-powered tools for document clustering, AI content detection, and plagiarism checking.</p>
-        <div class="feature-box">
-            <h3>📂 Document Clustering</h3>
-            <p>Automatically group similar documents based on their content.</p>
-            <a href="{{ url_for('cluster') }}">Go to Clustering →</a>
-        </div>
-        <div class="feature-box">
-            <h3>🤖 AI Content Detector</h3>
-            <p>Check if a given text is written by AI or a human.</p>
-            <a href="{{ url_for('ai_detection') }}">Go to AI Detector →</a>
-        </div>
-        <div class="feature-box">
-            <h3>🔍 Plagiarism Checker</h3>
-            <p>Detect plagiarism by comparing text against online sources.</p>
-            <a href="{{ url_for('plagiarism_checker') }}">Go to Plagiarism Checker →</a>
-        </div>
-    </div>
-</body>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Add any initialization code here if needed
+
+        // For example, to make the navigation links active based on current page
+        const currentPage = window.location.pathname.split("/").pop();
+        const navLinks = document.querySelectorAll(".navbar-menu a");
+
+        navLinks.forEach((link) => {
+          const linkPage = link.getAttribute("href");
+          if (
+            currentPage === linkPage ||
+            (currentPage === "" && linkPage === "index.html")
+          ) {
+            link.classList.add("active");
+          } else {
+            link.classList.remove("active");
+          }
+        });
+      });
+    </script>
+  </body>
 </html>
