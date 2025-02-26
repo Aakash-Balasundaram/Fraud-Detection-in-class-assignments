@@ -58,6 +58,11 @@ def code_cluster():
 def plagiarism_checker():
     return render_template("plagiarism_checker.html", link={}, percent=0)
 
+# Added route for compatibility with your HTML template
+@app.route('/home')
+def home():
+    return render_template("plagiarism_checker.html", link={}, percent=0)
+
 # Function to create clusters based on cosine similarity
 def create_clusters(texts, threshold=0.6):
     try:
@@ -373,7 +378,7 @@ def test():
     if 'q' in request.form and request.form['q']:
         percent, link = findSimilarity(request.form['q'])
         percent = round(percent, 2)
-        return render_template('plagiarism_detector.html', link=link, percent=percent)
+        return render_template('plagiarism_checker.html', link=link, percent=percent)
     return redirect(url_for('plagiarism_checker'))
 
 @app.route('/file_test', methods=['POST'])
@@ -387,7 +392,7 @@ def file_test():
             if text:
                 percent, link = findSimilarity(text)
                 percent = round(percent, 2)
-                return render_template('plagiarism_detector.html', link=link, percent=percent)
+                return render_template('plagiarism_checker.html', link=link, percent=percent)
     
     return redirect(url_for('plagiarism_checker'))
 
