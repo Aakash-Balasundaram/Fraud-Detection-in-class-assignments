@@ -4,129 +4,505 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document Clustering</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { 
-            font-family: 'Arial', sans-serif; 
-            background-color: #f4f4f9; 
-            padding: 20px; 
-            text-align: center; 
-        }
-        h2, h3 { color: #333; }
-        .container { 
-            max-width: 800px; 
-            margin: auto; 
-            background: #ffffff; 
-            padding: 20px; 
-            border-radius: 10px; 
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
+        :root {
+            --primary: #4361ee;
+            --primary-light: #4895ef;
+            --secondary: #3f37c9;
+            --danger: #ef476f;
+            --warning: #ffd166;
+            --success: #06d6a0;
+            --info: #118ab2;
+            --dark: #2b2d42;
+            --gray: #8d99ae;
+            --light: #f8f9fa;
+            --light-gray: #edf2f4;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --shadow-light: 0 2px 10px rgba(0, 0, 0, 0.05);
+            --transition: all 0.3s ease;
         }
         
-        /* Navigation Bar */
-        .navbar {
-            background-color: #007bff;
-            padding: 10px;
-            text-align: center;
-            margin-bottom: 20px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .navbar a {
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: var(--dark);
+            line-height: 1.6;
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        
+        /* Navbar */
+        .navbar {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            padding: 1rem 2rem;
+            color: white;
+            box-shadow: var(--shadow);
+        }
+        
+        .navbar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+        }
+        
+        .navbar-brand i {
+            margin-right: 10px;
+            font-size: 1.8rem;
+        }
+        
+        .navbar-menu {
+            display: flex;
+            gap: 2rem;
+        }
+        
+        .navbar-menu a {
             color: white;
             text-decoration: none;
-            padding: 10px 15px;
-            font-size: 18px;
-            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: var(--transition);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
         }
-        .navbar a:hover {
-            background-color: #0056b3;
-            border-radius: 5px;
+        
+        .navbar-menu a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
         }
-
-        button {
-            background: #007bff; 
-            color: white; 
-            border: none; 
-            padding: 10px 20px; 
-            border-radius: 5px;
-            cursor: pointer; 
-            font-size: 16px; 
-            transition: background 0.3s ease;
+        
+        /* Dashboard Header */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 2rem 0 1.5rem;
         }
-        button:hover { background: #0056b3; }
-
-        #uploadedFiles {
-            list-style: none;
-            padding: 0;
-            margin-top: 10px;
+        
+        .dashboard-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--dark);
         }
-        #uploadedFiles li {
-            background: #e9ecef;
-            padding: 8px;
-            margin: 5px 0;
-            border-radius: 5px;
-            text-align: left;
+        
+        /* Card Styling */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-light);
         }
-
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--light-gray);
+        }
+        
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+        
+        /* File Upload Area */
+        .upload-area {
+            border: 2px dashed var(--primary-light);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            background-color: rgba(72, 149, 239, 0.05);
+            transition: var(--transition);
+        }
+        
+        .upload-area:hover {
+            background-color: rgba(72, 149, 239, 0.1);
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary-light);
+            margin-bottom: 1rem;
+        }
+        
+        .upload-message {
+            margin-bottom: 1.5rem;
+            color: var(--dark);
+        }
+        
+        .upload-note {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Button Styling */
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+            transform: translateY(-3px);
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+        
+        .file-input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        /* File List */
+        .file-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: var(--shadow-light);
+            margin-bottom: 1.5rem;
+        }
+        
+        .file-list-header {
+            padding: 1rem;
+            background-color: var(--light-gray);
+            font-weight: 600;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .file-count {
+            background-color: var(--primary);
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        
+        .file-list-body {
+            padding: 0.5rem;
+        }
+        
+        .file-item {
+            padding: 0.7rem 1rem;
+            margin: 0.3rem;
+            border-radius: 6px;
+            background-color: var(--light);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: var(--transition);
+        }
+        
+        .file-item:hover {
+            background-color: var(--light-gray);
+        }
+        
+        .file-icon {
+            color: var(--primary);
+        }
+        
+        /* Cluster Results */
+        .cluster-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
         .cluster-card {
             background: white;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-light);
+            transition: var(--transition);
         }
+        
         .cluster-card:hover {
-            transform: scale(1.02);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transform: translateY(-5px);
+            box-shadow: var(--shadow);
         }
-        .cluster-card h3 {
-            color: #007bff;
-            margin-bottom: 10px;
+        
+        .cluster-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--light-gray);
         }
-        .cluster-card p {
-            color: #333;
+        
+        .cluster-title {
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .similarity-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background-color: rgba(6, 214, 160, 0.15);
+            color: var(--success);
+        }
+        
+        .cluster-files {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .cluster-file-item {
+            padding: 0.5rem;
+            margin: 0.3rem 0;
+            border-radius: 4px;
+            background-color: var(--light);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray);
+        }
+        
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--primary-light);
+        }
+        
+        /* Loading Indicator */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .loading-spinner {
+            border: 4px solid var(--light-gray);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .cluster-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .cluster-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .navbar-menu {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
-
+    <!-- Navbar -->
     <div class="navbar">
-        
-        <a href="{{ url_for('index') }}">Home</a>
-        <a href="{{ url_for('ai_detection') }}">AI Content Detection</a>
+        <div class="navbar-content">
+            <div class="navbar-brand">
+                <i class="fas fa-layer-group"></i>
+                Text Document Clustering
+            </div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a>
+                <a href="{{ url_for('ai_detection') }}"><i class="fas fa-robot"></i> AI Detection</a>
+                <a href="{{ url_for('trend_analysis') }}"><i class="fas fa-chart-line"></i> Trend Analysis</a>
+            </div>
+        </div>
     </div>
-
+    
     <div class="container">
-        <h2>Upload Folder of Documents</h2>
-        <h2>Only text documents for clustering</h2>
-        <input type="file" id="folderInput" webkitdirectory directory multiple>
-        <button id="checkSimilarity">Document Cluster</button>
-
-        <h3>Uploaded Files:</h3>
-        <ul id="uploadedFiles"></ul>
-
-        <h3>Clusters:</h3>
-        <div id="clusterResults"></div>
+        <!-- Dashboard Header -->
+        <div class="dashboard-header">
+            <div class="dashboard-title">Text Document Similarity Analysis</div>
+        </div>
+        
+        <!-- Upload Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-file-upload" style="color: var(--primary);"></i>
+                    Upload Documents
+                </div>
+            </div>
+            
+            <div class="upload-area">
+                <div class="upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <div class="upload-message">
+                    <h3>Drop your files here or click to browse</h3>
+                </div>
+                <div class="upload-note">
+                    Only text documents (.txt, .doc, .docx, .pdf) will be analyzed for clustering
+                </div>
+                <div class="file-input-wrapper">
+                    <button class="btn btn-primary">
+                        <i class="fas fa-folder-open"></i> Select Folder
+                    </button>
+                    <input type="file" id="folderInput" webkitdirectory directory multiple class="file-input">
+                </div>
+            </div>
+            
+            <!-- File List -->
+            <div class="file-list" id="fileListContainer" style="display: none;">
+                <div class="file-list-header">
+                    <span>Uploaded Files</span>
+                    <span class="file-count" id="fileCount">0</span>
+                </div>
+                <div class="file-list-body">
+                    <ul id="uploadedFiles" style="list-style: none; padding: 0;"></ul>
+                </div>
+            </div>
+            
+            <div style="text-align: center;">
+                <button id="checkSimilarity" class="btn btn-primary">
+                    <i class="fas fa-sitemap"></i> Analyze & Cluster Documents
+                </button>
+            </div>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div class="loading" id="loadingIndicator">
+            <div class="loading-spinner"></div>
+            <div>Analyzing documents and generating clusters...</div>
+        </div>
+        
+        <!-- Results Card -->
+        <div class="card" id="resultsCard" style="display: none;">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-th-large" style="color: var(--primary);"></i>
+                    Cluster Results
+                </div>
+            </div>
+            
+            <div id="emptyState" class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3>No Clusters Found</h3>
+                <p>Upload documents and analyze them to see clusters of similar content</p>
+            </div>
+            
+            <div id="clusterResults" class="cluster-grid"></div>
+        </div>
     </div>
-
+    
     <script>
-        document.getElementById("folderInput").addEventListener("change", function () {
+        document.getElementById("folderInput").addEventListener("change", function() {
             const files = Array.from(this.files);
             const uploadedFilesList = document.getElementById("uploadedFiles");
-            uploadedFilesList.innerHTML = "";
-
-            files.forEach(file => {
-                const listItem = document.createElement("li");
-                listItem.textContent = file.name;
-                uploadedFilesList.appendChild(listItem);
-            });
+            const fileListContainer = document.getElementById("fileListContainer");
+            const fileCount = document.getElementById("fileCount");
+            
+            if (files.length > 0) {
+                fileListContainer.style.display = "block";
+                fileCount.textContent = files.length;
+                uploadedFilesList.innerHTML = "";
+                
+                files.forEach(file => {
+                    const listItem = document.createElement("li");
+                    listItem.className = "file-item";
+                    listItem.innerHTML = `
+                        <i class="fas fa-file-alt file-icon"></i>
+                        <span>${file.name}</span>
+                    `;
+                    uploadedFilesList.appendChild(listItem);
+                });
+            } else {
+                fileListContainer.style.display = "none";
+            }
         });
 
-        document.getElementById("checkSimilarity").addEventListener("click", function () {
+        document.getElementById("checkSimilarity").addEventListener("click", function() {
             const files = document.getElementById("folderInput").files;
+            const loadingIndicator = document.getElementById("loadingIndicator");
+            const resultsCard = document.getElementById("resultsCard");
+            const emptyState = document.getElementById("emptyState");
+            const clusterResults = document.getElementById("clusterResults");
+            
             if (files.length === 0) {
-                alert("Please upload some files.");
+                alert("Please upload some files first.");
                 return;
             }
-
+            
+            // Show loading indicator
+            loadingIndicator.style.display = "block";
+            resultsCard.style.display = "none";
+            
             let fileData = [];
             const readerPromises = Array.from(files).map(file => {
                 return new Promise(resolve => {
@@ -144,36 +520,105 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    const clusterResults = document.getElementById("clusterResults");
+                    // Hide loading indicator
+                    loadingIndicator.style.display = "none";
+                    resultsCard.style.display = "block";
                     clusterResults.innerHTML = "";
-
+                    
                     if (data.error) {
-                        clusterResults.innerHTML = `<p style="color: red;">${data.error}</p>`;
+                        emptyState.style.display = "block";
+                        emptyState.innerHTML = `
+                            <div class="empty-state-icon">
+                                <i class="fas fa-exclamation-circle" style="color: var(--danger);"></i>
+                            </div>
+                            <h3>Error</h3>
+                            <p>${data.error}</p>
+                        `;
                         return;
                     }
-
+                    
                     if (!data.length) {
-                        clusterResults.innerHTML = "<p>No clusters formed.</p>";
+                        emptyState.style.display = "block";
                         return;
                     }
-
+                    
+                    emptyState.style.display = "none";
+                    
                     data.forEach(cluster => {
                         const clusterDiv = document.createElement("div");
-                        clusterDiv.classList.add("cluster-card");
+                        clusterDiv.className = "cluster-card";
+                        
+                        const similarityClass = cluster.avg_similarity >= 80 ? "high" : 
+                                              cluster.avg_similarity >= 50 ? "medium" : "low";
+                                              
+                        const similarityColor = cluster.avg_similarity >= 80 ? "var(--success)" : 
+                                              cluster.avg_similarity >= 50 ? "var(--warning)" : "var(--danger)";
+                        
                         clusterDiv.innerHTML = `
-                            <h3>Cluster ${cluster.cluster_id} (Similarity: ${cluster.avg_similarity}%)</h3>
-                            <p>${cluster.names.join(", ")}</p>
+                            <div class="cluster-header">
+                                <div class="cluster-title">Cluster ${cluster.cluster_id}</div>
+                                <div class="similarity-badge" style="background-color: rgba(${similarityColor}, 0.15); color: ${similarityColor};">
+                                    ${cluster.avg_similarity.toFixed(1)}% Similar
+                                </div>
+                            </div>
+                            <div class="cluster-files">
+                                ${cluster.names.map(name => `
+                                    <div class="cluster-file-item">
+                                        <i class="fas fa-file-alt" style="color: var(--primary);"></i>
+                                        ${name}
+                                    </div>
+                                `).join('')}
+                            </div>
                         `;
+                        
                         clusterResults.appendChild(clusterDiv);
                     });
                 })
                 .catch(error => {
+                    loadingIndicator.style.display = "none";
+                    resultsCard.style.display = "block";
+                    emptyState.style.display = "block";
+                    emptyState.innerHTML = `
+                        <div class="empty-state-icon">
+                            <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i>
+                        </div>
+                        <h3>Something went wrong</h3>
+                        <p>Please try again later or contact support.</p>
+                    `;
                     console.error("Error:", error);
-                    alert("Something went wrong. Check console for details.");
                 });
             });
         });
+        
+        // For drag and drop functionality in the upload area
+        const uploadArea = document.querySelector('.upload-area');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            uploadArea.style.backgroundColor = 'rgba(72, 149, 239, 0.2)';
+            uploadArea.style.borderColor = 'var(--primary)';
+        }
+        
+        function unhighlight() {
+            uploadArea.style.backgroundColor = 'rgba(72, 149, 239, 0.05)';
+            uploadArea.style.borderColor = 'var(--primary-light)';
+        }
     </script>
-
 </body>
 </html>
