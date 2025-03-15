@@ -1,236 +1,517 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fraud Detector | Home</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary: #1a73e8;
+        --primary-dark: #0d47a1;
+        --secondary: #2a9d8f;
+        --danger: #e63946;
+        --success: #43a047;
+        --warning: #ffa000;
+        --gray-light: #f5f7fa;
+        --gray: #e0e0e0;
+        --gray-dark: #757575;
+        --dark: #263238;
+      }
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plagiarism Checker | Home</title>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css">
-  <!-- Google Fonts -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap">
-  <!-- Bootstrap core CSS -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.0/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Material Design Bootstrap -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.19.1/css/mdb.min.css" rel="stylesheet">
-  <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Sansita+Swashed:wght@700&display=swap" rel="stylesheet">
-  <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet" type="text/css">
-  
-  <style>
-    body{
-      overflow: hidden;
-      overflow-x: hidden;
-      overflow-y: scroll;
-      font-family: 'Roboto Mono', monospace;
-      height: 100%; 
-      background-color: rgb(227, 242, 255);   
-    }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: rgb(227, 242, 255);
+        color: var(--dark);
+        line-height: 1.6;
+        min-height: 100vh;
+      }
 
-    .tab-content-1{
-      height: 300px;
-      border: 2px solid rgb(131, 130, 130);
-      border-radius: 4px;
-      padding: 3px;
-      background-color: white;
-    }
+      .wrapper {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
 
-    .navbar-brand {
-      font-family: 'Sansita Swashed', cursive; 
-      font-size: 26px; 
-      margin-right: 40px;
-    }
+      .navbar {
+        background-color: #1a73e8; /* Updated primary color */
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
 
-    .navbar-nav{
-      font-size: 20px;     
-    }
+      .navbar-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 20px;
+      }
 
-    .navbar-nav li :hover{
-      color: #2a9d8f;    
-      border-bottom: 2px solid #2a9d8f;
-    }
+      .navbar-brand {
+        display: flex;
+        align-items: center;
+        padding: 15px 0;
+      }
 
-    .nav-two{
-      margin-left: 40px;
-    }
+      .navbar-brand h1 {
+        color: white;
+        font-size: 1.5rem;
+        margin-left: 10px;
+      }
 
-    .content-1{
-      margin-top: 10px;
-    }
-    h1{
-      text-align: center;
-    }
+      .navbar-brand i {
+        font-size: 1.8rem;
+        color: white;
+      }
 
-    .tab-content-1{
-      height: 300px;
-      border: 2px solid rgb(131, 130, 130);
-      border-radius: 4px;
-      padding: 3px;
-    }
-    .text-content{
-      text-align: center;
-    }
-    form{
-      padding-top: 20px;
-    }
-    textarea{
-      width: 90%;
-      height: 170px;
-    }
+      .navbar-menu {
+        display: flex;
+        gap: 20px;
+      }
 
-    input{
-      border-radius: 2px solid rgb(172, 169, 169);
-    }
+      .navbar-menu a {
+        color: white;
+        text-decoration: none;
+        padding: 15px 15px;
+        font-size: 1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
 
-    button{
-      background-color: #2a9d8f;
-    }
+      .navbar-menu a:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
 
-    #submit-button-1 {
-      margin-left: 100px;
-      background-color: #2a9d8f; 
-      color: white;
-    }
+      .navbar-menu a.active {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
 
-    #submit-button-2{
-      margin-left: 105px;
-      
-      background-color: #2a9d8f; 
-      color: white; 
-      visibility: hidden;  
-    }
+      .main-content {
+        flex: 1;
+        padding: 30px 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+      }
 
-    .output-per-tot{
-      font-size: 35px;
-      color: #264653;
-      padding-top: 43px;
-      margin-left: 175px;
-      margin-top: 5px;
-      text-align: center;
-      width: 155px;
-      height: 155px;
-      border: 7px solid #2a9d8f;
-      border-radius: 50%
-    }
+      .page-title {
+        margin-bottom: 20px;
+        text-align: center;
+        color: var(--primary-dark);
+      }
 
-    #p1 {
-      margin-left: 180px;
-    }
+      .input-panel {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+        padding: 30px;
+        margin-bottom: 30px;
+        max-width: 700px;
+        margin-left: auto;
+        margin-right: auto;
+      }
 
-    .result-div{
-      margin-bottom: 40px;
-    }
+      .panel-heading {
+        text-align: center;
+        margin-bottom: 20px;
+      }
 
-    .result-1{
-      background-color: #acd4d0;
-      padding: 15px 10px;
-      border-radius: 5px;
-      text-align: center;
-    }
+      .nav-tabs {
+        display: flex;
+        list-style: none;
+        border-bottom: 1px solid var(--gray);
+        margin-bottom: 15px;
+      }
 
-    .result-2{
-      padding-top: 25px;
-    }
-  </style>
+      .nav-item {
+        margin-right: 5px;
+      }
 
-</head>
+      .nav-link {
+        display: block;
+        padding: 10px 15px;
+        color: var(--dark);
+        text-decoration: none;
+        border-radius: 4px 4px 0 0;
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
 
-<body>
-  <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #264653;">
-    <a class="navbar-brand" href="{{ url_for('index') }}">Plagiarism Checker</a>
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
-      aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav" style="margin-left: 0;">
-        <li class="nav-item nav-one">
-          <a class="nav-link" href="{{ url_for('index') }}">Home <span class="sr-only">(current)</span></a>
-        </li>
-      </ul>
-    </div>
-  </nav>
+      .nav-link.active {
+        color: var(--primary);
+        border-bottom: 2px solid var(--primary);
+        font-weight: 500;
+      }
 
-  <div class="container content-1">
-    <div class="col-md-6 offset-3 text-content">
-      <p>Choose a file or enter text for web search!</p>
-      <div class="tab-content-1">
-        <ul class="nav nav-tabs" id="myTab" role="tablist">
-          <li class="nav-item">
-            <a class="nav-link active" id="text-tab" data-toggle="tab" href="#text-input-ws" role="tab"
-              aria-controls="text-input-ws" aria-selected="true" onclick="makeInvisible()">Text</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" id="file-tab" data-toggle="tab" href="#file-input-ws" role="tab"
-              aria-controls="file-input-ws" aria-selected="false" onclick="makeVisible()">File Upload</a>
-          </li>
-        </ul>
-        <div class="tab-content" id="myTabContent">
-          <div class="tab-pane fade show active" id="text-input-ws" role="tabpanel" aria-labelledby="text-tab">
-            <form id="form1-ws" action="{{ url_for('test') }}" method="POST">
-              <textarea id="text-1" name="q" required></textarea>
-            </form>
+      .tab-content {
+        padding: 15px 0;
+      }
+
+      .tab-pane {
+        display: none;
+      }
+
+      .tab-pane.active {
+        display: block;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      textarea {
+        width: 90%;
+        height: 170px;
+        padding: 15px;
+        border: 1px solid var(--gray);
+        border-radius: 8px;
+        font-size: 1rem;
+        resize: none;
+        font-family: inherit;
+        transition: border 0.3s ease;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: var(--secondary);
+        box-shadow: 0 0 0 2px rgba(42, 157, 143, 0.2);
+      }
+
+      input[type="file"] {
+        padding: 15px;
+        background-color: white;
+        border: 1px solid var(--gray);
+        border-radius: 8px;
+        width: 90%;
+        margin: 0 auto;
+        display: block;
+      }
+
+      .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 15px;
+        background-color: var(--secondary);
+        color: white;
+      }
+
+      .btn:hover {
+        background-color: #238b7e;
+      }
+
+      .button-group {
+        text-align: center;
+      }
+
+      .results-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 30px;
+        margin-top: 40px;
+      }
+
+      .results-panel {
+        flex: 1;
+        min-width: 300px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+        padding: 25px;
+      }
+
+      .results-header {
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid var(--gray);
+        text-align: center;
+        color: var(--primary-dark);
+      }
+
+      .results-list {
+        list-style: none;
+      }
+
+      .results-list li {
+        padding: 10px 0;
+        border-bottom: 1px solid var(--gray-light);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .score-result {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .score-circle {
+        font-size: 35px;
+        color: var(--primary-dark);
+        width: 155px;
+        height: 155px;
+        border: 7px solid var(--secondary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 15px;
+      }
+
+      .score-label {
+        font-size: 1.2rem;
+        color: var(--gray-dark);
+        text-align: center;
+      }
+
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        .navbar-container {
+          flex-direction: column;
+          padding: 10px;
+        }
+
+        .navbar-brand {
+          margin-bottom: 10px;
+          margin-right: 0;
+        }
+
+        .navbar-menu {
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+
+        .results-container {
+          flex-direction: column;
+        }
+
+        .input-panel,
+        .results-panel {
+          padding: 20px;
+        }
+
+        textarea,
+        input[type="file"] {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <nav class="navbar">
+        <div class="navbar-container">
+          <div class="navbar-brand">
+            <i class="fas fa-shield-alt"></i>
+            <h1>Fraud Detection</h1>
           </div>
-          
-          <div class="tab-pane fade" id="file-input-ws" role="tabpanel" aria-labelledby="file-tab">
-            <form id="form2-ws" action="{{ url_for('file_test') }}" enctype="multipart/form-data" method="POST">
-              <input id="id_docfile" required type="file" name="docfile" />
-            </form>
+          <div class="navbar-menu">
+            <a href="{{ url_for('index') }}" class="active"
+              ><i class="fas fa-home"></i> Home</a
+            >
           </div>
         </div>
-      </div>
-      <div class="col-md-9">
-        <button type="submit" form="form1-ws" id="submit-button-1" class="btn">Run Search</button>
-        <button type="submit" form="form2-ws" id="submit-button-2" class="btn submit-button-2">Run Search</button>  
-      </div>  
-    </div>
+      </nav>
 
-    <div class="container-fluid result-div">
-      <div class="row">
-        <div class="col-md-6 result-1">
-          <h3>Results</h3>
-          <ul class="output-list-1">
-            {% for url, score in link.items() %}
-              <li>{{ url }} ({{ score|round(2) }}%)</li>
-            {% endfor %}
+      <main class="main-content">
+        <h1 class="page-title">Plagiarism Checker</h1>
+
+        <section class="input-panel">
+          <div class="panel-heading">
+            <p>Choose a file or enter text for web search!</p>
+          </div>
+
+          <ul class="nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item">
+              <a
+                class="nav-link active"
+                id="text-tab"
+                data-toggle="tab"
+                href="#text-input-ws"
+                role="tab"
+                aria-controls="text-input-ws"
+                aria-selected="true"
+                onclick="makeInvisible()"
+                >Text</a
+              >
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link"
+                id="file-tab"
+                data-toggle="tab"
+                href="#file-input-ws"
+                role="tab"
+                aria-controls="file-input-ws"
+                aria-selected="false"
+                onclick="makeVisible()"
+                >File Upload</a
+              >
+            </li>
           </ul>
-        </div>
 
-        <div class="col-md-6 result-2" style="text-align: center; align-items: center;">
-          {% if percent is defined %}
-            <p class="output-per-tot">{{ percent }}%</p>
-            <p>Plagiarized</p>
-          {% endif %}
-        </div>
-      </div>
+          <div class="tab-content" id="myTabContent">
+            <div
+              class="tab-pane fade show active"
+              id="text-input-ws"
+              role="tabpanel"
+              aria-labelledby="text-tab"
+            >
+              <form id="form1-ws" action="{{ url_for('test') }}" method="POST">
+                <div class="form-group">
+                  <textarea
+                    id="text-1"
+                    name="q"
+                    required
+                    placeholder="Enter the text you want to check for fraud..."
+                  ></textarea>
+                </div>
+                <div class="button-group">
+                  <button type="submit" id="submit-button-1" class="btn">
+                    <i class="fas fa-search"></i> Run Search
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div
+              class="tab-pane fade"
+              id="file-input-ws"
+              role="tabpanel"
+              aria-labelledby="file-tab"
+            >
+              <form
+                id="form2-ws"
+                action="{{ url_for('file_test') }}"
+                enctype="multipart/form-data"
+                method="POST"
+              >
+                <div class="form-group">
+                  <input id="id_docfile" required type="file" name="docfile" />
+                </div>
+                <div class="button-group">
+                  <button
+                    type="submit"
+                    id="submit-button-2"
+                    class="btn"
+                    style="visibility: hidden"
+                  >
+                    <i class="fas fa-search"></i> Run Search
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section class="results-container">
+          <div class="results-panel">
+            <h3 class="results-header">Matching Sources</h3>
+            <ul class="results-list">
+              {% for url, score in link.items() %}
+              <li>
+                <span>{{ url }}</span>
+                <strong>{{ score|round(2) }}%</strong>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+
+          <div class="results-panel score-result">
+            {% if percent is defined %}
+            <div class="score-circle">{{ percent }}%</div>
+            <div class="score-label">Fraud Probability</div>
+            {% else %}
+            <div class="score-circle">-%</div>
+            <div class="score-label">Submit content to check</div>
+            {% endif %}
+          </div>
+        </section>
+      </main>
     </div>
-  </div>
 
-  <script>
-    function makeVisible() {
-      document.getElementById("submit-button-2").style.visibility = "visible";
-      document.getElementById("submit-button-1").style.visibility = "hidden";
-    }
+    <script>
+      function makeVisible() {
+        document.getElementById("submit-button-2").style.visibility = "visible";
+        document.getElementById("submit-button-1").style.visibility = "hidden";
 
-    function makeInvisible(){
-      document.getElementById("submit-button-2").style.visibility = "hidden";
-      document.getElementById("submit-button-1").style.visibility = "visible";
-    }
-  </script>
+        // Fix for tab switching
+        document
+          .getElementById("text-input-ws")
+          .classList.remove("show", "active");
+        document
+          .getElementById("file-input-ws")
+          .classList.add("show", "active");
+        document.getElementById("text-tab").classList.remove("active");
+        document.getElementById("file-tab").classList.add("active");
+      }
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
-  <!-- JQuery -->
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-  <!-- Bootstrap tooltips -->
-  <script type="text/javascript"
-    src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
-  <!-- Bootstrap core JavaScript -->
-  <script type="text/javascript"
-    src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.0/js/bootstrap.min.js"></script>
-  <!-- MDB core JavaScript -->
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.19.1/js/mdb.min.js"></script>
-</body>
+      function makeInvisible() {
+        document.getElementById("submit-button-2").style.visibility = "hidden";
+        document.getElementById("submit-button-1").style.visibility = "visible";
+
+        // Fix for tab switching
+        document
+          .getElementById("file-input-ws")
+          .classList.remove("show", "active");
+        document
+          .getElementById("text-input-ws")
+          .classList.add("show", "active");
+        document.getElementById("file-tab").classList.remove("active");
+        document.getElementById("text-tab").classList.add("active");
+      }
+    </script>
+
+    <!-- JQuery -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"
+    ></script>
+    <!-- Bootstrap tooltips -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"
+    ></script>
+    <!-- Bootstrap core JavaScript -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.0/js/bootstrap.min.js"
+    ></script>
+    <!-- MDB core JavaScript -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.19.1/js/mdb.min.js"
+    ></script>
+  </body>
 </html>
