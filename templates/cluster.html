@@ -186,6 +186,16 @@
             box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
             transform: translateY(-3px);
         }
+
+        .btn-pdf {
+            background: #ef476f;
+            color: white;
+        }
+        
+        .btn-pdf:hover {
+            background: #d43d63;
+            transform: translateY(-2px);
+        }
         
         .file-input-wrapper {
             position: relative;
@@ -348,6 +358,18 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* PDF Error Message */
+        .message-error {
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            text-align: center;
+            font-weight: 500;
+            background-color: rgba(239, 71, 111, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 71, 111, 0.3);
+        }
         
         /* Responsive Design */
         @media (max-width: 992px) {
@@ -458,6 +480,16 @@
             </div>
             
             <div id="clusterResults" class="cluster-grid"></div>
+
+            <!-- PDF Download Button -->
+            <div id="pdfDownload" style="margin-top: 20px; display: none; text-align: center;">
+                <button onclick="generatePDF()" class="btn btn-pdf">
+                    <i class="fas fa-file-pdf"></i> Download PDF Report
+                </button>
+            </div>
+            
+            <!-- PDF Error Message -->
+            <div id="pdfError" class="message message-error" style="display: none;"></div>
         </div>
     </div>
     
@@ -493,6 +525,8 @@
             const resultsCard = document.getElementById("resultsCard");
             const emptyState = document.getElementById("emptyState");
             const clusterResults = document.getElementById("clusterResults");
+            const pdfDownload = document.getElementById("pdfDownload");
+            const pdfError = document.getElementById("pdfError");
             
             if (files.length === 0) {
                 alert("Please upload some files first.");
@@ -502,6 +536,8 @@
             // Show loading indicator
             loadingIndicator.style.display = "block";
             resultsCard.style.display = "none";
+            pdfDownload.style.display = "none";
+            pdfError.style.display = "none";
             
             let fileData = [];
             const readerPromises = Array.from(files).map(file => {
@@ -513,7 +549,7 @@
             });
 
             Promise.all(readerPromises).then(filesData => {
-                fetch("{{ url_for('cluster_files') }}", {
+                fetch("/compare-texts/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ files: filesData })
@@ -548,18 +584,24 @@
                         const clusterDiv = document.createElement("div");
                         clusterDiv.className = "cluster-card";
                         
-                        const similarityClass = cluster.avg_similarity >= 80 ? "high" : 
-                                              cluster.avg_similarity >= 50 ? "medium" : "low";
-                                              
-                        const similarityColor = cluster.avg_similarity >= 80 ? "var(--success)" : 
-                                              cluster.avg_similarity >= 50 ? "var(--warning)" : "var(--danger)";
+                        let similarityClass, similarityColor;
+                        if (cluster.avg_similarity !== undefined) {
+                            similarityClass = cluster.avg_similarity >= 80 ? "high" : 
+                                            cluster.avg_similarity >= 50 ? "medium" : "low";
+                            similarityColor = cluster.avg_similarity >= 80 ? "var(--success)" : 
+                                            cluster.avg_similarity >= 50 ? "var(--warning)" : "var(--danger)";
+                        } else {
+                            similarityColor = "var(--primary)"; // Default color if no similarity
+                        }
                         
                         clusterDiv.innerHTML = `
                             <div class="cluster-header">
                                 <div class="cluster-title">Cluster ${cluster.cluster_id}</div>
-                                <div class="similarity-badge" style="background-color: rgba(${similarityColor}, 0.15); color: ${similarityColor};">
-                                    ${cluster.avg_similarity.toFixed(1)}% Similar
-                                </div>
+                                ${cluster.avg_similarity !== undefined ? `
+                                    <div class="similarity-badge" style="background-color: rgba(${similarityColor}, 0.15); color: ${similarityColor};">
+                                        ${cluster.avg_similarity.toFixed(1)}% Similar
+                                    </div>
+                                ` : ''}
                             </div>
                             <div class="cluster-files">
                                 ${cluster.names.map(name => `
@@ -573,6 +615,8 @@
                         
                         clusterResults.appendChild(clusterDiv);
                     });
+
+                    pdfDownload.style.display = "block";
                 })
                 .catch(error => {
                     loadingIndicator.style.display = "none";
@@ -589,6 +633,61 @@
                 });
             });
         });
+
+        // Generate PDF
+        function generatePDF() {
+            const clusters = Array.from(document.querySelectorAll('.cluster-card')).map(cluster => {
+                const clusterData = {
+                    cluster_id: cluster.querySelector('.cluster-title').textContent.replace('Cluster ', '').trim(),
+                    names: Array.from(cluster.querySelectorAll('.cluster-file-item')).map(item => 
+                        item.textContent.trim().replace(/^(.*?\s+)/, '') // Remove icon and extra spaces
+                    )
+                };
+                // Only add avg_similarity if it exists
+                const similarityElement = cluster.querySelector('.similarity-badge');
+                if (similarityElement) {
+                    clusterData.avg_similarity = similarityElement.textContent.match(/\d+(\.\d+)?/)[0];
+                }
+                return clusterData;
+            });
+
+            const loadingIndicator = document.getElementById("loadingIndicator");
+            const pdfError = document.getElementById("pdfError");
+
+            loadingIndicator.style.display = "block";
+            pdfError.style.display = "none";
+
+            fetch('/generate_text_cluster_pdf', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ clusters: clusters })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.error); });
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                loadingIndicator.style.display = "none";
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'text_cluster_report.pdf';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loadingIndicator.style.display = "none";
+                pdfError.textContent = `Error generating PDF: ${error.message}`;
+                pdfError.style.display = 'block';
+            });
+        }
         
         // For drag and drop functionality in the upload area
         const uploadArea = document.querySelector('.upload-area');

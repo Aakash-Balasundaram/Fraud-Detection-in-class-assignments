@@ -213,6 +213,15 @@
             color: white;
         }
         
+        .btn-advanced {
+            background-color: var(--secondary);
+            color: white;
+        }
+        
+        .btn-advanced:hover {
+            background-color: #e65c00;
+        }
+        
         .result-card {
             background: white;
             border-radius: 10px;
@@ -388,7 +397,8 @@
                 </div>
                 
                 <div class="button-group">
-                    <button id="analyzeBtn" class="btn btn-primary"><i class="fas fa-robot"></i> Analyze AI Content</button>
+                    <button id="analyzeBtn" class="btn btn-primary"><i class="fas fa-robot"></i> Basic Analysis</button>
+                    <button id="refinedAnalyzeBtn" class="btn btn-advanced"><i class="fas fa-microscope"></i> Advanced Detection</button>
                     <button id="clearBtn" class="btn btn-secondary"><i class="fas fa-trash-alt"></i> Clear</button>
                 </div>
             </section>
@@ -398,6 +408,7 @@
                     <h2 class="result-title">Analysis Results</h2>
                     <span id="resultBadge" class="result-badge badge-warning">Processing</span>
                 </div>
+                
                 
                 <div class="progress-container">
                     <div class="progress-label">
@@ -434,6 +445,7 @@
             const textInput = document.getElementById('textInput');
             const inputCounter = document.querySelector('.input-counter');
             const analyzeBtn = document.getElementById('analyzeBtn');
+            const refinedAnalyzeBtn = document.getElementById('refinedAnalyzeBtn');
             const clearBtn = document.getElementById('clearBtn');
             const resultCard = document.getElementById('resultCard');
             const resultBadge = document.getElementById('resultBadge');
@@ -464,7 +476,7 @@
                 resultCard.style.display = 'none';
             });
             
-            // Analyze button
+            // Basic Analyze button
             analyzeBtn.addEventListener('click', function() {
                 const text = textInput.value.trim();
                 
@@ -487,6 +499,50 @@
                 setTimeout(function() {
                     analyzeContent(text);
                 }, 1500);
+            });
+            
+            // Refined Analysis button
+            refinedAnalyzeBtn.addEventListener('click', function() {
+                const text = textInput.value.trim();
+                
+                if (!text) {
+                    alert('Please enter some text for analysis.');
+                    return;
+                }
+                
+                // Show loading state
+                resultCard.style.display = 'block';
+                resultBadge.className = 'result-badge badge-warning';
+                resultBadge.textContent = 'Processing';
+                aiPercentage.textContent = '0%';
+                humanPercentage.textContent = '0%';
+                aiProgressBar.style.width = '0%';
+                humanProgressBar.style.width = '0%';
+                analysisList.innerHTML = '<li class="analysis-item"><i class="fas fa-spinner fa-spin"></i> Performing advanced AI detection analysis...</li>';
+                
+                // Call the refined AI detection endpoint
+                fetch('/ai_refined/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    displayRefinedResults(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    analysisList.innerHTML = `<li class="analysis-item"><i class="fas fa-exclamation-circle warning-icon"></i> <span>Error: ${error.message}</span></li>`;
+                    resultBadge.className = 'result-badge badge-danger';
+                    resultBadge.textContent = 'Error';
+                });
             });
             
             function analyzeContent(text) {
@@ -582,7 +638,71 @@
                 
                 analysisList.innerHTML = analysisItems.map(item => `<li class="analysis-item">${item}</li>`).join('');
             }
-        });
+            
+            function displayRefinedResults(data) {
+    try {
+        // Clear previous results
+        analysisList.innerHTML = '';
+
+        // Handle errors in the response
+        if (data.error) {
+            analysisList.innerHTML = `<li class="analysis-item"><i class="fas fa-exclamation-circle warning-icon"></i> ${data.error}</li>`;
+            return;
+        }
+
+        // Extract AI score and prediction from the response
+        const aiScore = data.ai_score || 0; // Default to 0 if not provided
+        const prediction = data.prediction || "unknown"; // Default to "unknown" if not provided
+        const details = data.details || {}; // Default to an empty object if not provided
+
+        // Calculate percentages
+        const aiPercent = Math.round(aiScore * 100);
+        const humanPercent = 100 - aiPercent;
+
+        // Update progress bars and percentages
+        aiPercentage.textContent = `${aiPercent}%`;
+        humanPercentage.textContent = `${humanPercent}%`;
+        aiProgressBar.style.width = `${aiPercent}%`;
+        humanProgressBar.style.width = `${humanPercent}%`;
+
+        // Update risk badge based on AI probability
+        if (aiPercent >= 75) {
+            resultBadge.className = 'result-badge badge-danger';
+            resultBadge.textContent = 'High Risk';
+        } else if (aiPercent >= 50) {
+            resultBadge.className = 'result-badge badge-warning';
+            resultBadge.textContent = 'Medium Risk';
+        } else {
+            resultBadge.className = 'result-badge badge-success';
+            resultBadge.textContent = 'Low Risk';
+        }
+
+        // Build analysis items for the UI
+        const analysisItems = [
+            `<i class="fas fa-robot"></i> Prediction: ${prediction}`,
+            `<i class="fas fa-percentage"></i> AI Score: ${(aiScore * 100).toFixed(1)}%`,
+            `<i class="fas fa-info-circle"></i> Confidence: ${details.confidence || 'N/A'}`
+        ];
+
+        // Add additional details if available
+        if (details.model_name) {
+            analysisItems.push(`<i class="fas fa-microchip"></i> Model: ${details.model_name}`);
+        }
+        if (details.analysis) {
+            analysisItems.push(`<i class="fas fa-chart-bar"></i> Analysis: ${JSON.stringify(details.analysis)}`);
+        }
+
+        // Update the analysis list in the UI
+        analysisList.innerHTML = analysisItems.map(item => 
+            `<li class="analysis-item">${item}</li>`
+        ).join('');
+
+    } catch (error) {
+        // Handle unexpected errors
+        analysisList.innerHTML = `<li class="analysis-item"><i class="fas fa-exclamation-circle warning-icon"></i> Error processing results: ${error.message}</li>`;
+        console.error('Display error:', error);
+    }
+}        });
     </script>
 </body>
 </html>

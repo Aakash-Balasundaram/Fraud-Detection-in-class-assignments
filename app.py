@@ -1,14 +1,11 @@
 import torch
-from flask import Flask, request, jsonify, render_template, redirect, url_for
+from flask import Flask, request, jsonify, render_template, redirect, url_for, render_template_string, make_response
 import json
 import logging
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from transformers import BertTokenizer, BertForSequenceClassification, AutoTokenizer, AutoModel
-from transformers import pipeline
-from sklearn.preprocessing import normalize
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 import torch.nn.functional as F
 import re
 import math
@@ -19,7 +16,13 @@ from docx import Document
 import PyPDF2
 import os
 from googleapiclient.discovery import build
-
+import requests
+import pdfkit
+from datetime import datetime
+import sqlite3
+from sklearn.preprocessing import normalize
+# Configure logging at the top
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
@@ -33,7 +36,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 nltk.download('stopwords')
 nltk.download('wordnet')
 
-# Configure API keys for Google Custom Search
 searchEngine_API = 'AIzaSyCAeR7_6TTKzoJmSwmOuHZvKcVg_lhqvCc'
 searchEngine_Id = '758ad3e78879f0e08'
 
@@ -58,42 +60,46 @@ def code_cluster():
 def trend_analysis():
     return render_template("trend_analysis.html")
 
+@app.route('/assignment/')
+def assignment():
+    return render_template("assignment.html")
+
 @app.route('/plagiarism_checker/')
 def plagiarism_checker():
     return render_template("plagiarism_checker.html", link={}, percent=0)
 
-# Added route for compatibility with your HTML template
 @app.route('/home')
 def home():
     return render_template("plagiarism_checker.html", link={}, percent=0)
 
 # Function to create clusters based on cosine similarity
-def create_clusters(texts, threshold=0.6):
+def create_clusters(texts, threshold=0.7):
     try:
+        if len(texts) == 1:
+            logging.info("Only one file provided, creating a single cluster without similarity.")
+            return [[0]], []
         vectorizer = TfidfVectorizer()
         tfidf_matrix = vectorizer.fit_transform(texts)
         cosine_sim = cosine_similarity(tfidf_matrix)
-
+        print("Cosine Similarity Matrix:")
+        for row in cosine_sim:
+            print([round(val, 3) for val in row])
         clusters = []
         visited = set()
         cluster_similarities = []
-
         for i in range(len(texts)):
             if i not in visited:
                 current_cluster = [i]
                 similarities = []
-
                 for j in range(i + 1, len(texts)):
                     if cosine_sim[i][j] >= threshold:
                         current_cluster.append(j)
                         visited.add(j)
                         similarities.append(cosine_sim[i][j])
-
                 avg_similarity = round(np.mean(similarities) * 100, 2) if similarities else 100
                 clusters.append(current_cluster)
                 cluster_similarities.append(avg_similarity)
                 visited.add(i)
-
         return clusters, cluster_similarities
     except Exception as e:
         logging.error(f"Error in create_clusters: {str(e)}")
@@ -106,74 +112,163 @@ def cluster_files():
         files_data = data.get("files", [])
         texts = [file["content"] for file in files_data]
         names = [file["name"] for file in files_data]
-
         if not texts:
             return jsonify({'error': 'No valid files found'}), 400
-
-        clusters, cluster_similarities = create_clusters(texts, threshold=0.3)
-
+        clusters, cluster_similarities = create_clusters(texts, threshold=0.6)
         result = []
         for idx, cluster in enumerate(clusters):
-            result.append({
+            cluster_data = {
                 "cluster_id": idx + 1,
                 "names": [names[i] for i in cluster],
-                "avg_similarity": cluster_similarities[idx]
-            })
-
+            }
+            if len(cluster) > 1:
+                cluster_data["avg_similarity"] = cluster_similarities[idx]
+            result.append(cluster_data)
         return jsonify(result)
     except Exception as e:
         logging.error(f"Error in cluster_files: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@app.route('/generate_text_cluster_pdf', methods=['POST'])
+def generate_text_cluster_pdf():
+    try:
+        data = request.get_json()
+        clusters = data.get('clusters', [])
+        html = render_template_string('''
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 1in; line-height: 1.6; }
+                    h1 { color: #2b2d42; font-size: 24px; border-bottom: 2px solid #4361ee; padding-bottom: 5px; }
+                    .report-info { font-size: 12px; color: #666; margin-bottom: 20px; }
+                    .cluster { margin: 20px 0; padding: 10px; background-color: #f9f9f9; border-radius: 5px; }
+                    .cluster-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+                    .cluster-title { font-size: 18px; font-weight: bold; color: #2b2d42; }
+                    .similarity { color: #4361ee; font-weight: bold; }
+                    ul { list-style-type: none; padding-left: 20px; }
+                    li { margin: 5px 0; font-size: 12px; }
+                    li:before { content: "• "; color: #4361ee; }
+                </style>
+            </head>
+            <body>
+                <h1>Text Document Clustering Report</h1>
+                <div class="report-info">Generated on: {{ timestamp }}</div>
+                {% if clusters %}
+                    {% for cluster in clusters %}
+                    <div class="cluster">
+                        <div class="cluster-header">
+                            <span class="cluster-title">Cluster {{ cluster.cluster_id }}</span>
+                            {% if cluster.avg_similarity is defined %}
+                                <span class="similarity">Similarity: {{ cluster.avg_similarity }}%</span>
+                            {% endif %}
+                        </div>
+                        <ul>
+                            {% for file in cluster.names %}
+                            <li>{{ file }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No clusters found.</p>
+                {% endif %}
+            </body>
+            </html>
+        ''', clusters=clusters, timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        try:
+            config = pdfkit.configuration()
+        except Exception as e:
+            logging.warning(f"wkhtmltopdf not found in PATH, using hardcoded path: {str(e)}")
+            config = pdfkit.configuration(wkhtmltopdf='C:/Program Files/wkhtmltopdf/bin/wkhtmltopdf.exe')
+        pdf = pdfkit.from_string(html, False, options={
+            'page-size': 'A4',
+            'margin-top': '0.5in',
+            'margin-right': '0.5in',
+            'margin-bottom': '0.5in',
+            'margin-left': '0.5in',
+            'encoding': 'UTF-8'
+        }, configuration=config)
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = 'attachment; filename=text_cluster_report.pdf'
+        return response
+    except Exception as e:
+        logging.error(f"PDF generation error: {str(e)}")
+        return jsonify({'error': f'Failed to generate PDF: {str(e)}'}), 500
 
-# Load model and tokenizer
-model_name = "roberta-base-openai-detector"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSequenceClassification.from_pretrained(model_name)
-model.eval()  # Set model to evaluation mode
+
+# AI Detection
+tokenizer = AutoTokenizer.from_pretrained("Hello-SimpleAI/chatgpt-detector-roberta")
+model = AutoModelForSequenceClassification.from_pretrained("Hello-SimpleAI/chatgpt-detector-roberta")
+model.eval()
 
 @app.route('/detect_ai_content/', methods=['POST'])
 def detect_ai_content():
-    """
-    API endpoint to detect AI-generated content using the RoBERTa-based model.
-    """
     try:
         data = request.get_json()
         text = data.get("text", "").strip()
-
         if not text:
             return jsonify({"error": "Empty text input"}), 400
-
-        # Tokenize input
         inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
-
-        # Get model predictions
         with torch.no_grad():
             outputs = model(**inputs)
             logits = outputs.logits
-            probabilities = F.softmax(logits, dim=-1)[0].tolist()  # Convert tensor to list
-
-        ai_probability = round(probabilities[1], 2)  # AI-generated probability
-        human_probability = round(probabilities[0], 2)  # Human-written probability
-
+            probabilities = F.softmax(logits, dim=-1)[0].tolist()
+        ai_probability = round(probabilities[1], 2)
+        human_probability = round(probabilities[0], 2)
         return jsonify({
             "ai_probability": ai_probability,
             "human_probability": human_probability
         })
-
     except Exception as e:
         logging.error(f"Error in detect_ai_content_api: {str(e)}", exc_info=True)
         return jsonify({"error": "Internal server error"}), 500
 
+@app.route('/ai_refined/', methods=['POST'])
+def ai_refined():
+    try:
+        data = request.get_json()
+        text = data.get("text", "").strip()
+        if not text:
+            return jsonify({"error": "Empty text input"}), 400
+        headers = {
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMmRjMmI5NTAtMDdjMy00NTJkLWE1YTMtZjNiZTBjMGFhZDEwIiwidHlwZSI6ImFwaV90b2tlbiJ9.kcl-O0uLd5GTZrZ-PY15QAVh7ymguY_BUD9mJrqG1xc"
+        }
+        url = "https://api.edenai.run/v2/text/ai_detection"
+        payload = {
+            "providers": "originalityai",
+            "text": text,
+        }
+        response = requests.post(url, json=payload, headers=headers)
+        response.raise_for_status()
+        result = response.json()
+        print("API Response:", json.dumps(result, indent=2))
+        if 'error' in result:
+            return jsonify({"error": result['error']['message']}), 400
+        if 'originalityai' not in result:
+            return jsonify({"error": "No results from originalityai"}), 400
+        originality_data = result['originalityai']
+        items = originality_data.get("items", [])
+        if not items:
+            return jsonify({"error": "No items found in originalityai response"}), 400
+        first_item = items[0]
+        return jsonify({
+            "prediction": first_item.get("prediction", "unknown"),
+            "ai_score": first_item.get("ai_score", 0),
+            "details": first_item
+        })
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error: {http_err}")
+        return jsonify({"error": "API request failed", "details": str(http_err)}), 500
+    except Exception as e:
+        logging.error(f"Error: {str(e)}")
+        return jsonify({"error": "Processing failed", "details": str(e)}), 500
 
-#---------------------------------------------------------------------------------------------#
-# PLAGIARISM DETECTION FUNCTIONS
-#---------------------------------------------------------------------------------------------#
-
+# Plagiarism Detection Functions
 WORD = re.compile(r'\w+')
 
 def get_cosine(vec1, vec2):
-    """Returns cosine similarity of two vectors"""
     intersection = set(vec1.keys()) & set(vec2.keys())
     matchWords = {}
     for i in intersection:
@@ -181,29 +276,20 @@ def get_cosine(vec1, vec2):
             matchWords[i] = vec2[i]
         else:
             matchWords[i] = vec1[i]
-    
-    # calculating numerator
     numerator = sum([vec1[x] * matchWords[x] for x in intersection])
-    
-    # calculating denominator
     sum1 = sum([vec1[x]**2 for x in vec1.keys()])
     sum2 = sum([matchWords[x]**2 for x in matchWords.keys()])
-    
     denominator = math.sqrt(sum1) * math.sqrt(sum2)
-    
-    # checking for divide by zero
     if denominator == 0:
         return 0.0
     else:
         return float(numerator) / denominator
 
 def text_to_vector(text):
-    """Converts given text into a vector"""
     words = WORD.findall(text)
     return Counter(words)
 
 def cosineSim(text1, text2):
-    """Returns cosine similarity of two texts"""
     t1 = text1.lower()
     t2 = text2.lower()
     vector1 = text_to_vector(t1)
@@ -212,17 +298,14 @@ def cosineSim(text1, text2):
     return cosine
 
 def getQueries(text, n):
-    """Splits text into n-gram queries for web search"""
     sentenceEnders = re.compile("['.!?]")
     sentenceList = sentenceEnders.split(text)
     sentencesplits = []
     en_stops = set(stopwords.words('english'))
-
     for sentence in sentenceList:
         x = re.compile(r'\W+', re.UNICODE).split(sentence)
         x = [word for word in x if word.lower() not in en_stops and word != '']
         sentencesplits.append(x)
-    
     finalq = []
     for sentence in sentencesplits:
         l = len(sentence)
@@ -239,23 +322,19 @@ def getQueries(text, n):
         else:
             if l > 4:
                 finalq.append(sentence)
-    
     return finalq
 
 def searchWeb(text, output, c):
-    """Searches web for similar content using Google Custom Search API"""
     try:
         resource = build("customsearch", 'v1', developerKey=searchEngine_API).cse()
         result = resource.list(q=text, cx=searchEngine_Id).execute()
         searchInfo = result['searchInformation']
-        
         if int(searchInfo['totalResults']) > 0:
             maxSim = 0
             itemLink = ''
-            numList = len(result['items']) 
+            numList = len(result['items'])
             if numList >= 5:
                 numList = 5
-            
             for i in range(0, numList):
                 item = result['items'][i]
                 content = item['snippet']
@@ -266,7 +345,6 @@ def searchWeb(text, output, c):
                 if item['link'] in output:
                     itemLink = item['link']
                     break
-            
             if itemLink in output:
                 print('if', maxSim)
                 output[itemLink] = output[itemLink] + 1
@@ -277,41 +355,32 @@ def searchWeb(text, output, c):
                 print(itemLink)
                 output[itemLink] = 1
                 c[itemLink] = maxSim
-    
     except Exception as e:
         print(text)
         print(e)
         print('error')
         return output, c, 1
-    
     return output, c, 0
 
 def findSimilarity(text):
-    """Main function to find similarity with web content"""
-    # n-grams N VALUE SET HERE
     n = 9
     queries = getQueries(text, n)
     print('GetQueries task complete')
     q = [' '.join(d) for d in queries]
     output = {}
     c = {}
-    
     while "" in q:
         q.remove("")
-    
     count = len(q)
     if count > 100:
         count = 100
-    
     numqueries = count
     for s in q[0:count]:
         output, c, errorCount = searchWeb(s, output, c)
         print('Web search task complete')
         numqueries = numqueries - errorCount
-    
     totalPercent = 0
     outputLink = {}
-    
     for link in output:
         percentage = (output[link]*c[link]*100)/numqueries
         if percentage > 10:
@@ -324,19 +393,15 @@ def findSimilarity(text):
         elif c[link] == 1:
             totalPercent = totalPercent + percentage
         print(link, totalPercent)
-
     print(count, numqueries)
     print(totalPercent, outputLink)
     print("\nDone!")
-    
     return totalPercent, outputLink
 
 def extract_text_from_txt(file):
-    """Extract text from a .txt file"""
     return file.read().decode('utf-8')
 
 def extract_text_from_docx(file):
-    """Extract text from a .docx file"""
     doc = Document(file)
     text = ""
     for para in doc.paragraphs:
@@ -344,7 +409,6 @@ def extract_text_from_docx(file):
     return text
 
 def extract_text_from_pdf(file_path):
-    """Extract text from a .pdf file"""
     text = ""
     try:
         with open(file_path, 'rb') as file:
@@ -357,27 +421,21 @@ def extract_text_from_pdf(file_path):
     return text
 
 def process_file(file):
-    """Process uploaded file and extract text based on file type"""
     filename = file.filename
     text = ""
-    
     if filename.endswith('.txt'):
         text = extract_text_from_txt(file)
     elif filename.endswith('.docx'):
         text = extract_text_from_docx(file)
     elif filename.endswith('.pdf'):
-        # Save the file temporarily to process with PyPDF2
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
         text = extract_text_from_pdf(file_path)
-        # Clean up the temporary file
         os.remove(file_path)
-    
     return text
 
 @app.route('/test', methods=['POST'])
 def test():
-    """Web search with text input"""
     print("Plagiarism test with text input")
     if 'q' in request.form and request.form['q']:
         percent, link = findSimilarity(request.form['q'])
@@ -387,7 +445,6 @@ def test():
 
 @app.route('/file_test', methods=['POST'])
 def file_test():
-    """Web search with file input"""
     print("Plagiarism test with file input")
     if 'docfile' in request.files:
         file = request.files['docfile']
@@ -397,12 +454,9 @@ def file_test():
                 percent, link = findSimilarity(text)
                 percent = round(percent, 2)
                 return render_template('plagiarism_checker.html', link=link, percent=percent)
-    
     return redirect(url_for('plagiarism_checker'))
 
-#---------------------------------------------------------------------------------------------#
-
-# Set logging level
+# Code Clustering
 device = 0 if torch.cuda.is_available() else -1
 feature_extractor = pipeline(
     "feature-extraction",
@@ -415,14 +469,11 @@ def extract_embeddings(code_snippets):
     try:
         logging.info(f"Extracting embeddings for {len(code_snippets)} snippets")
         embeddings = feature_extractor(code_snippets, truncation=True, padding=True, max_length=512)
-        
         if not embeddings or len(embeddings) == 0:
             logging.error("No embeddings extracted. Check input data or model loading.")
             return np.array([])
-
         cls_embeddings = np.array([np.array(embed).squeeze()[0] for embed in embeddings])
         logging.info(f"Extracted {cls_embeddings.shape[0]} embeddings with shape {cls_embeddings.shape}")
-
         return cls_embeddings
     except Exception as e:
         logging.error(f"Error extracting embeddings: {str(e)}", exc_info=True)
@@ -433,50 +484,51 @@ def cluster_code_files(files, threshold=0.85):
         if not files or not all(isinstance(f, dict) for f in files):
             logging.error("Invalid file format received for clustering.")
             return []
-
         texts = [f.get("content", "").strip() for f in files]
         names = [f.get("name", "") for f in files]
-        
         if not any(texts):
             logging.warning("No valid file contents found.")
             return []
-
+        if len(texts) == 1:
+            logging.info("Only one file provided, creating a single cluster without similarity.")
+            return [{
+                "cluster_id": 0,
+                "names": names,
+            }]
         embeddings = extract_embeddings(texts)
         if embeddings.size == 0:
             logging.error("Embeddings are empty. Clustering cannot proceed.")
             return []
-        
         embeddings = normalize(embeddings, axis=1)
         cosine_sim = cosine_similarity(embeddings)
         logging.info(f"Cosine Similarity Matrix:\n{cosine_sim}")
-
         clusters = []
         assigned = set()
-        
         for i, name in enumerate(names):
             if name in assigned:
-                continue  
-            
+                continue
             new_cluster = {name}
             assigned.add(name)
-            
             for j in range(len(names)):
                 if i != j and names[j] not in assigned and cosine_sim[i, j] > threshold:
                     new_cluster.add(names[j])
                     assigned.add(names[j])
-            
             clusters.append(list(new_cluster))
-        
         cluster_list = []
         for cluster_id, filenames in enumerate(clusters):
             indices = [names.index(f) for f in filenames]
-            avg_similarity = round(np.mean(cosine_sim[np.ix_(indices, indices)]), 2) * 100
-            cluster_list.append({
-                "cluster_id": cluster_id,
-                "names": filenames,
-                "similarity": avg_similarity
-            })
-
+            if len(filenames) == 1:
+                cluster_list.append({
+                    "cluster_id": cluster_id,
+                    "names": filenames,
+                })
+            else:
+                avg_similarity = round(np.mean(cosine_sim[np.ix_(indices, indices)]), 2) * 100
+                cluster_list.append({
+                    "cluster_id": cluster_id,
+                    "names": filenames,
+                    "similarity": avg_similarity
+                })
         logging.info(f"Clusters JSON: {json.dumps(cluster_list, indent=4)}")
         return cluster_list
     except Exception as e:
@@ -488,26 +540,184 @@ def cluster_python_folder():
     try:
         data = request.get_json()
         logging.info(f"Received Data: {json.dumps(data, indent=2)}")
-        
         if not data or "files" not in data:
             return jsonify({"error": "Invalid request format"}), 400
-
         files_data = data["files"]
         if not isinstance(files_data, list):
             return jsonify({"error": "Files must be a list"}), 400
-
         clusters = cluster_code_files(files_data)
         if not clusters:
             logging.warning("No clusters were formed. Verify threshold or embeddings.")
-        
         logging.info(f"Clusters formed: {clusters}")
         return jsonify({"clusters": clusters}), 200
     except Exception as e:
         logging.error(f"API error: {str(e)}", exc_info=True)
         return jsonify({"error": "Internal server error"}), 500
 
+@app.route('/generate_cluster_pdf', methods=['POST'])
+def generate_cluster_pdf():
+    try:
+        data = request.get_json()
+        clusters = data.get('clusters', [])
+        html = render_template_string('''
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 1in; line-height: 1.6; }
+                    h1 { color: #2b2d42; font-size: 24px; border-bottom: 2px solid #4361ee; padding-bottom: 5px; }
+                    .report-info { font-size: 12px; color: #666; margin-bottom: 20px; }
+                    .cluster { margin: 20px 0; padding: 10px; background-color: #f9f9f9; border-radius: 5px; }
+                    .cluster-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+                    .cluster-title { font-size: 18px; font-weight: bold; color: #2b2d42; }
+                    .similarity { color: #4361ee; font-weight: bold; }
+                    ul { list-style-type: none; padding-left: 20px; }
+                    li { margin: 5px 0; font-size: 12px; }
+                    li:before { content: "• "; color: #4361ee; }
+                </style>
+            </head>
+            <body>
+                <h1>Code Cluster Analysis Report</h1>
+                <div class="report-info">Generated on: {{ timestamp }}</div>
+                {% if clusters %}
+                    {% for cluster in clusters %}
+                    <div class="cluster">
+                        <div class="cluster-header">
+                            <span class="cluster-title">Cluster {{ cluster.cluster_id }}</span>
+                            {% if cluster.similarity is defined %}
+                                <span class="similarity">Similarity: {{ cluster.similarity }}%</span>
+                            {% endif %}
+                        </div>
+                        <ul>
+                            {% for file in cluster.names %}
+                            <li>{{ file }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No clusters found.</p>
+                {% endif %}
+            </body>
+            </html>
+        ''', clusters=clusters, timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        try:
+            config = pdfkit.configuration()
+        except Exception as e:
+            logging.warning(f"wkhtmltopdf not found in PATH, using hardcoded path: {str(e)}")
+            config = pdfkit.configuration(wkhtmltopdf='C:/Program Files/wkhtmltopdf/bin/wkhtmltopdf.exe')
+        pdf = pdfkit.from_string(html, False, options={
+            'page-size': 'A4',
+            'margin-top': '0.5in',
+            'margin-right': '0.5in',
+            'margin-bottom': '0.5in',
+            'margin-left': '0.5in',
+            'encoding': 'UTF-8'
+        }, configuration=config)
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = 'attachment; filename=cluster_report.pdf'
+        return response
+    except Exception as e:
+        logging.error(f"PDF generation error: {str(e)}")
+        return jsonify({'error': f'Failed to generate PDF: {str(e)}'}), 500
+
+# SQLite Database Functions
+def create_assignment_table(assignment_name):
+    try:
+        table_name = re.sub(r'[^a-zA-Z0-9_]', '_', assignment_name)
+        if not table_name or table_name[0].isdigit():
+            table_name = f"assignment_{table_name}"
+        conn = sqlite3.connect('assignments.db')
+        cursor = conn.cursor()
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS {table_name} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_name TEXT NOT NULL,
+                ai_percentage REAL NOT NULL,
+                plagiarism_percentage REAL NOT NULL
+            )
+        ''')
+        conn.commit()
+        conn.close()
+        logging.info(f"Table {table_name} created or already exists.")
+        return table_name
+    except Exception as e:
+        logging.error(f"Error creating table: {str(e)}")
+        return None
+
+def insert_analysis_results(table_name, file_name, ai_percentage, plagiarism_percentage):
+    try:
+        conn = sqlite3.connect('assignments.db')
+        cursor = conn.cursor()
+        cursor.execute(f'''
+            INSERT INTO {table_name} (file_name, ai_percentage, plagiarism_percentage)
+            VALUES (?, ?, ?)
+        ''', (file_name, ai_percentage, plagiarism_percentage))
+        conn.commit()
+        conn.close()
+        logging.info(f"Inserted {file_name} into {table_name}.")
+    except Exception as e:
+        logging.error(f"Error inserting data: {str(e)}")
+
+def get_analysis_results(table_name):
+    try:
+        conn = sqlite3.connect('assignments.db')
+        cursor = conn.cursor()
+        cursor.execute(f'SELECT file_name, ai_percentage, plagiarism_percentage FROM {table_name}')
+        results = cursor.fetchall()
+        conn.close()
+        return [{"file_name": row[0], "ai_percentage": row[1], "plagiarism_percentage": row[2]} for row in results]
+    except Exception as e:
+        logging.error(f"Error retrieving data: {str(e)}")
+        return []
+
+@app.route('/assignment_func', methods=['GET', 'POST'])
+def assignment_func():
+    if request.method == 'POST':
+        data = request.get_json()
+        assignment_name = data.get("assignment_name", "")
+        files_data = data.get("files", [])
+        if not assignment_name or not files_data:
+            return jsonify({'error': 'Assignment name and files are required'}), 400
+        table_name = create_assignment_table(assignment_name)
+        if not table_name:
+            return jsonify({'error': 'Failed to create assignment table'}), 500
+        results = []
+        for file in files_data:
+            file_name = file.get("name", "")
+            text = file.get("content", "")
+            print(file_name,text)
+            # AI Detection
+            ai_response = requests.post(
+                "http://127.0.0.1:5000/detect_ai_content/",
+                json={"text": text}
+            ).json()
+            print(ai_response)
+            if "error" in ai_response:
+                logging.error(f"AI detection failed for {file_name}: {ai_response['error']}")
+                ai_percentage = 0.0
+            else:
+                ai_percentage = ai_response["ai_probability"]*100 # Scale to percentage
+                print(ai_percentage)
+                 
+            # Plagiarism Detection
+            try:
+                plagiarism_percentage, _ = findSimilarity(text)
+                plagiarism_percentage = round(plagiarism_percentage, 2)
+            except Exception as e:
+                logging.error(f"Plagiarism detection failed for {file_name}: {str(e)}")
+                plagiarism_percentage = 0.0
+            # Store in database
+            insert_analysis_results(table_name, file_name, ai_percentage, plagiarism_percentage)
+            results.append({
+                "file_name": file_name,
+                "ai_percentage": ai_percentage,
+                "plagiarism_percentage": plagiarism_percentage
+            })
+        return jsonify({'results': results, 'table_name': table_name})
+    return render_template('assignment.html')
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
     app.run(host='0.0.0.0', port=5000)

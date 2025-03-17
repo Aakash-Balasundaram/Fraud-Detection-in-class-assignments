@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignment Analysis</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-dark: #0d47a1;
+            --secondary: #ff6d00;
+            --danger: #e53935;
+            --success: #43a047;
+            --warning: #ffa000;
+            --gray-light: #f5f7fa;
+            --gray: #e0e0e0;
+            --gray-dark: #757575;
+            --dark: #263238;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --shadow-light: 0 2px 10px rgba(0, 0, 0, 0.05);
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--gray-light);
+            color: var(--dark);
+            line-height: 1.6;
+            padding: 0;
+        }
+        
+        .wrapper {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        
+        .navbar {
+            background-color: var(--primary);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .navbar-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+        
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+        }
+        
+        .navbar-brand i {
+            font-size: 1.8rem;
+            color: white;
+            margin-right: 10px;
+        }
+        
+        .navbar-brand span {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .navbar-menu {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .navbar-menu a {
+            color: white;
+            text-decoration: none;
+            padding: 15px 15px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        
+        .navbar-menu a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 2rem 0 1.5rem;
+        }
+        
+        .dashboard-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+            padding: 30px;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--gray);
+        }
+        
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+        
+        .upload-area {
+            border: 2px dashed var(--primary);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            background-color: rgba(26, 115, 232, 0.05);
+            transition: var(--transition);
+        }
+        
+        .upload-area:hover {
+            background-color: rgba(26, 115, 232, 0.1);
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+        
+        .upload-message {
+            margin-bottom: 1.5rem;
+            color: var(--dark);
+        }
+        
+        .upload-note {
+            font-size: 0.9rem;
+            color: var(--gray-dark);
+            margin-bottom: 1.5rem;
+        }
+        
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: none;
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn:hover {
+            box-shadow: 0 5px 15px rgba(26, 115, 232, 0.3);
+            transform: translateY(-3px);
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+        
+        .file-input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .assignment-input {
+            width: 100%;
+            padding: 0.8rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--gray);
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            background-color: white;
+            box-shadow: var(--shadow-light);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .results-table th,
+        .results-table td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid var(--gray);
+        }
+        
+        .results-table th {
+            background-color: var(--gray-light);
+            font-weight: 600;
+        }
+        
+        .results-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .loading-spinner {
+            border: 4px solid var(--gray);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .message-error {
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            text-align: center;
+            font-weight: 500;
+            background-color: rgba(229, 57, 53, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(229, 57, 53, 0.3);
+        }
+        
+        .footer {
+            background-color: var(--dark);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+            margin-top: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .navbar-content {
+                flex-direction: column;
+                padding: 8px;
+            }
+            .navbar-brand {
+                margin-bottom: 10px;
+            }
+            .navbar-menu {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 5px;
+            }
+            .navbar-menu a {
+                padding: 10px;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-brand">
+                    <i class="fas fa-book"></i>
+                    <span>Assignment Analysis</span>
+                </div>
+                <div class="navbar-menu">
+                    <a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a>
+                    <a href="{{ url_for('cluster') }}"><i class="fas fa-layer-group"></i> Text Cluster Similarity</a>
+                    <a href="{{ url_for('ai_detection') }}"><i class="fas fa-robot"></i> AI Detection</a>
+                    <a href="{{ url_for('code_cluster') }}"><i class="fas fa-code"></i> Code Cluster Similarity</a>
+                    <a href="{{ url_for('plagiarism_checker') }}"><i class="fas fa-search"></i> Plagiarism Checker</a>
+                    <a href="{{ url_for('trend_analysis') }}"><i class="fas fa-chart-line"></i> Trend Analysis</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="container">
+            <div class="dashboard-header">
+                <div class="dashboard-title">Assignment Analysis</div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-file-upload" style="color: var(--primary);"></i>
+                        Analyze Student Submissions
+                    </div>
+                </div>
+                
+                <div class="upload-area">
+                    <div class="upload-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <div class="upload-message">
+                        <h3>Drop your files here or click to browse</h3>
+                    </div>
+                    <div class="upload-note">
+                        Only text documents (.txt) will be analyzed
+                    </div>
+                    <div class="file-input-wrapper">
+                        <button class="btn">
+                            <i class="fas fa-folder-open"></i> Select Folder
+                        </button>
+                        <input type="file" id="folderInput" webkitdirectory directory multiple accept=".txt" class="file-input">
+                    </div>
+                </div>
+                
+                <input type="text" id="assignmentName" class="assignment-input" placeholder="Enter Assignment Name">
+                
+                <div style="text-align: center;">
+                    <button id="checkButton" class="btn">
+                        <i class="fas fa-check-circle"></i> Check
+                    </button>
+                </div>
+            </div>
+            
+            <div class="loading" id="loadingIndicator">
+                <div class="loading-spinner"></div>
+                <div>Analyzing documents...</div>
+            </div>
+            
+            <div class="card" id="resultsCard" style="display: none;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-table" style="color: var(--primary);"></i>
+                        Analysis Results
+                    </div>
+                </div>
+                
+                <table class="results-table" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>File Name</th>
+                            <th>AI Content (%)</th>
+                            <th>Plagiarism (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            
+            <div id="errorMessage" class="message-error" style="display: none;"></div>
+        </div>
+        
+        <footer class="footer">
+            <p>&copy; 2025 Fraud Detector. All rights reserved.</p>
+        </footer>
+    </div>
+    
+    <script>
+        document.getElementById("folderInput").addEventListener("change", function() {
+            const files = Array.from(this.files);
+            if (files.length > 0) {
+                console.log("Selected files:", files.map(file => file.name));
+            }
+        });
+    
+        document.getElementById("checkButton").addEventListener("click", function() {
+            const files = document.getElementById("folderInput").files;
+            const assignmentName = document.getElementById("assignmentName").value.trim();
+            const loadingIndicator = document.getElementById("loadingIndicator");
+            const resultsCard = document.getElementById("resultsCard");
+            const resultsTableBody = document.getElementById("resultsTable").querySelector("tbody");
+            const errorMessage = document.getElementById("errorMessage");
+    
+            if (files.length === 0) {
+                errorMessage.textContent = "Please upload some files first.";
+                errorMessage.style.display = "block";
+                return;
+            }
+    
+            if (!assignmentName) {
+                errorMessage.textContent = "Please enter an assignment name.";
+                errorMessage.style.display = "block";
+                return;
+            }
+    
+            // Show confirmation dialog
+            const confirmed = confirm("Are you sure you want to analyze the selected files? This process cannot be undone.");
+            if (!confirmed) {
+                errorMessage.textContent = "File analysis cancelled.";
+                errorMessage.style.display = "block";
+                return;
+            }
+    
+            errorMessage.style.display = "none";
+            resultsCard.style.display = "none";
+            resultsTableBody.innerHTML = "";
+            loadingIndicator.style.display = "block";
+    
+            const readerPromises = Array.from(files).map(file => {
+                return new Promise(resolve => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve({ name: file.name, content: reader.result });
+                    reader.readAsText(file);
+                });
+            });
+    
+            Promise.all(readerPromises).then(filesData => {
+                // Log file names to console on client side after confirmation
+                console.log("Confirmed files to be analyzed:", filesData.map(file => file.name));
+                fetch("/assignment_func", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ assignment_name: assignmentName, files: filesData })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    loadingIndicator.style.display = "none";
+                    if (data.error) {
+                        errorMessage.textContent = data.error;
+                        errorMessage.style.display = "block";
+                        return;
+                    }
+                    resultsCard.style.display = "block";
+                    data.results.forEach(result => {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td>${result.file_name}</td>
+                            <td>${result.ai_percentage}%</td>
+                            <td>${result.plagiarism_percentage}%</td>
+                        `;
+                        resultsTableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    loadingIndicator.style.display = "none";
+                    errorMessage.textContent = "Error analyzing documents: " + error.message;
+                    errorMessage.style.display = "block";
+                    console.error("Error:", error);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
