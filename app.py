@@ -21,6 +21,7 @@ import pdfkit
 from datetime import datetime
 import sqlite3
 from sklearn.preprocessing import normalize
+import requests
 # Configure logging at the top
 logging.basicConfig(level=logging.INFO)
 
@@ -104,6 +105,8 @@ def create_clusters(texts, threshold=0.3):
     except Exception as e:
         logging.error(f"Error in create_clusters: {str(e)}")
         return [], []
+    
+
 
 @app.route('/compare-texts/', methods=['POST'])
 def cluster_files():
@@ -225,46 +228,62 @@ def detect_ai_content():
         logging.error(f"Error in detect_ai_content_api: {str(e)}", exc_info=True)
         return jsonify({"error": "Internal server error"}), 500
 
+
+# Replace the standalone RapidAPI request and incomplete route with this complete version
 @app.route('/ai_refined/', methods=['POST'])
 def ai_refined():
     try:
+        # Get text from the frontend request
         data = request.get_json()
         text = data.get("text", "").strip()
         if not text:
             return jsonify({"error": "Empty text input"}), 400
-        headers = {
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMmRjMmI5NTAtMDdjMy00NTJkLWE1YTMtZjNiZTBjMGFhZDEwIiwidHlwZSI6ImFwaV90b2tlbiJ9.kcl-O0uLd5GTZrZ-PY15QAVh7ymguY_BUD9mJrqG1xc"
-        }
-        url = "https://api.edenai.run/v2/text/ai_detection"
-        payload = {
-            "providers": "originalityai",
-            "text": text,
-        }
-        response = requests.post(url, json=payload, headers=headers)
-        response.raise_for_status()
-        result = response.json()
-        print("API Response:", json.dumps(result, indent=2))
-        if 'error' in result:
-            return jsonify({"error": result['error']['message']}), 400
-        if 'originalityai' not in result:
-            return jsonify({"error": "No results from originalityai"}), 400
-        originality_data = result['originalityai']
-        items = originality_data.get("items", [])
-        if not items:
-            return jsonify({"error": "No items found in originalityai response"}), 400
-        first_item = items[0]
-        return jsonify({
-            "prediction": first_item.get("prediction", "unknown"),
-            "ai_score": first_item.get("ai_score", 0),
-            "details": first_item
-        })
-    except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP error: {http_err}")
-        return jsonify({"error": "API request failed", "details": str(http_err)}), 500
-    except Exception as e:
-        logging.error(f"Error: {str(e)}")
-        return jsonify({"error": "Processing failed", "details": str(e)}), 500
 
+        # RapidAPI AI Content Detector setup
+        url = "https://ai-content-detector-ai-gpt.p.rapidapi.com/api/detectText/"
+        headers = {
+            "x-rapidapi-key": "f9f4afc3bbmshe706902778d4a95p17967fjsne94dbf9c3400",
+            "x-rapidapi-host": "ai-content-detector-ai-gpt.p.rapidapi.com",
+            "Content-Type": "application/json"
+        }
+        payload = {"text": text}  # Use the frontend text input
+
+        # Send request to RapidAPI
+        response = requests.post(url, json=payload, headers=headers)
+        
+        # Check if request was successful
+        if response.status_code != 200:
+            logging.error(f"RapidAPI error: {response.status_code} - {response.text}")
+            return jsonify({"error": f"API request failed: {response.status_code}"}), 500
+        
+        # Print the raw RapidAPI response to the terminal
+        print("RapidAPI Response:", response.json())
+
+        # Parse RapidAPI response
+        result = response.json()
+        
+        # Extract relevant fields
+        fake_percentage = result.get("fakePercentage", 0.0) / 100  # Convert to 0-1 scale
+        is_human = result.get("isHuman", 0.0) / 100  # Convert to 0-1 scale
+        ai_score = fake_percentage  # Use fakePercentage as AI probability
+        prediction = "AI-Generated" if fake_percentage > 0.5 else "Human-Written"
+        
+        # Format response for frontend
+        response_data = {
+            "ai_score": ai_score,  # 0.0 to 1.0 (e.g., 0.4459)
+            "prediction": prediction,
+            "details": {
+                "confidence": f"{fake_percentage * 100:.1f}%",  # e.g., "44.6%"
+                "human_confidence": f"{is_human * 100:.1f}%",  # e.g., "62.5%"
+                "model_name": "RapidAPI AI Detector"
+            }
+        }
+        
+        return jsonify(response_data)
+    
+    except Exception as e:
+        logging.error(f"Error in ai_refined: {str(e)}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 # Plagiarism Detection Functions
 WORD = re.compile(r'\w+')
 

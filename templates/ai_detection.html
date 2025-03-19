@@ -455,11 +455,10 @@
             const humanProgressBar = document.getElementById('humanProgressBar');
             const analysisList = document.getElementById('analysisList');
             
-            // Character counter
+            // Character counter (unchanged)
             textInput.addEventListener('input', function() {
                 const length = this.value.length;
                 inputCounter.textContent = `${length}/5000 characters`;
-                
                 if (length > 5000) {
                     inputCounter.style.color = 'red';
                     this.value = this.value.substring(0, 5000);
@@ -469,23 +468,20 @@
                 }
             });
             
-            // Clear button
+            // Clear button (unchanged)
             clearBtn.addEventListener('click', function() {
                 textInput.value = '';
                 inputCounter.textContent = '0/5000 characters';
                 resultCard.style.display = 'none';
             });
             
-            // Basic Analyze button
+            // Basic Analyze button (unchanged)
             analyzeBtn.addEventListener('click', function() {
                 const text = textInput.value.trim();
-                
                 if (!text) {
                     alert('Please enter some text for analysis.');
                     return;
                 }
-                
-                // Show loading state
                 resultCard.style.display = 'block';
                 resultBadge.className = 'result-badge badge-warning';
                 resultBadge.textContent = 'Processing';
@@ -494,8 +490,6 @@
                 aiProgressBar.style.width = '0%';
                 humanProgressBar.style.width = '0%';
                 analysisList.innerHTML = '<li class="analysis-item"><i class="fas fa-spinner fa-spin"></i> Analyzing content patterns...</li>';
-                
-                // Simulate API call
                 setTimeout(function() {
                     analyzeContent(text);
                 }, 1500);
@@ -504,13 +498,10 @@
             // Refined Analysis button
             refinedAnalyzeBtn.addEventListener('click', function() {
                 const text = textInput.value.trim();
-                
                 if (!text) {
                     alert('Please enter some text for analysis.');
                     return;
                 }
-                
-                // Show loading state
                 resultCard.style.display = 'block';
                 resultBadge.className = 'result-badge badge-warning';
                 resultBadge.textContent = 'Processing';
@@ -520,7 +511,6 @@
                 humanProgressBar.style.width = '0%';
                 analysisList.innerHTML = '<li class="analysis-item"><i class="fas fa-spinner fa-spin"></i> Performing advanced AI detection analysis...</li>';
                 
-                // Call the refined AI detection endpoint
                 fetch('/ai_refined/', {
                     method: 'POST',
                     headers: {
@@ -545,56 +535,29 @@
                 });
             });
             
+            // Keep analyzeContent function unchanged if you want to retain basic analysis
             function analyzeContent(text) {
-                // This would be replaced with an actual API call in production
-                // For now, we'll use a simulation based on text characteristics
-                
-                // Simple algorithm to estimate AI probability based on text length and other factors
                 let aiProb = 0;
-                
-                // Longer texts tend to have patterns easier to detect
-                if (text.length > 1000) {
-                    aiProb += 0.15;
-                }
-                
-                // Check for repetitive phrases or patterns
+                if (text.length > 1000) aiProb += 0.15;
                 const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
                 const uniqueSentences = new Set(sentences.map(s => s.trim().toLowerCase()));
-                if (sentences.length > uniqueSentences.size) {
-                    aiProb += 0.1;
-                }
-                
-                // Check for overly formal language
+                if (sentences.length > uniqueSentences.size) aiProb += 0.1;
                 const formalWords = ['furthermore', 'moreover', 'thus', 'therefore', 'consequently', 'subsequently'];
                 const formalCount = formalWords.filter(word => text.toLowerCase().includes(word)).length;
                 aiProb += (formalCount / formalWords.length) * 0.2;
-                
-                // Check sentence length variability (AI often produces consistent length sentences)
                 const sentenceLengths = sentences.map(s => s.length);
                 const avgLength = sentenceLengths.reduce((a, b) => a + b, 0) / sentenceLengths.length;
                 const variance = sentenceLengths.reduce((a, b) => a + Math.pow(b - avgLength, 2), 0) / sentenceLengths.length;
                 const stdDev = Math.sqrt(variance);
-                
-                if (stdDev < 10 && sentences.length > 5) {
-                    aiProb += 0.15;
-                }
-                
-                // Add some randomness for demo purposes
+                if (stdDev < 10 && sentences.length > 5) aiProb += 0.15;
                 aiProb += Math.random() * 0.4;
-                
-                // Ensure the probability is between 0 and 1
                 aiProb = Math.min(Math.max(aiProb, 0), 1);
-                
-                // Update UI with results
                 const aiPercent = Math.round(aiProb * 100);
                 const humanPercent = 100 - aiPercent;
-                
                 aiPercentage.textContent = `${aiPercent}%`;
                 humanPercentage.textContent = `${humanPercent}%`;
                 aiProgressBar.style.width = `${aiPercent}%`;
                 humanProgressBar.style.width = `${humanPercent}%`;
-                
-                // Update badge
                 if (aiPercent >= 75) {
                     resultBadge.className = 'result-badge badge-danger';
                     resultBadge.textContent = 'High Risk';
@@ -605,104 +568,73 @@
                     resultBadge.className = 'result-badge badge-success';
                     resultBadge.textContent = 'Low Risk';
                 }
-                
-                // Generate analysis details
                 let analysisItems = [];
-                
                 if (aiPercent >= 75) {
-                    analysisItems.push('<i class="fas fa-exclamation-triangle warning-icon"></i> <span>High probability of AI-generated content - potential fraud risk.</span>');
-                    analysisItems.push('<i class="fas fa-exclamation-circle warning-icon"></i> <span>Content exhibits consistent patterns typical of language models.</span>');
-                    analysisItems.push('<i class="fas fa-shield-alt info-icon"></i> <span>Recommended: Request additional verification from the source.</span>');
+                    analysisItems.push('<i class="fas fa-exclamation-triangle warning-icon"></i> <span>High probability of AI-generated content.</span>');
                 } else if (aiPercent >= 50) {
-                    analysisItems.push('<i class="fas fa-exclamation-circle warning-icon"></i> <span>Moderate indicators of AI assistance in content creation.</span>');
-                    analysisItems.push('<i class="fas fa-info-circle info-icon"></i> <span>Some stylistic inconsistencies detected in the text.</span>');
-                    analysisItems.push('<i class="fas fa-shield-alt info-icon"></i> <span>Consider additional verification for sensitive matters.</span>');
+                    analysisItems.push('<i class="fas fa-exclamation-circle warning-icon"></i> <span>Moderate indicators of AI assistance.</span>');
                 } else {
-                    analysisItems.push('<i class="fas fa-check-circle info-icon"></i> <span>Content appears to be primarily human-written.</span>');
-                    analysisItems.push('<i class="fas fa-info-circle info-icon"></i> <span>Natural language patterns detected with typical human variation.</span>');
-                    analysisItems.push('<i class="fas fa-shield-alt info-icon"></i> <span>Low fraud risk based on AI content analysis.</span>');
+                    analysisItems.push('<i class="fas fa-check-circle info-icon"></i> <span>Content appears human-written.</span>');
                 }
-                
-                // Add specific flags based on content characteristics
-                if (stdDev < 10 && sentences.length > 5) {
-                    analysisItems.push('<i class="fas fa-flag warning-icon"></i> <span>Unusually consistent sentence structure throughout the text.</span>');
-                }
-                
-                if (formalCount >= 3) {
-                    analysisItems.push('<i class="fas fa-flag warning-icon"></i> <span>Elevated use of formal transition phrases typical in AI writing.</span>');
-                }
-                
-                if (sentences.length > uniqueSentences.size + 2) {
-                    analysisItems.push('<i class="fas fa-flag warning-icon"></i> <span>Repetitive phrasing detected which may indicate automated content.</span>');
-                }
-                
                 analysisList.innerHTML = analysisItems.map(item => `<li class="analysis-item">${item}</li>`).join('');
             }
             
+            // Updated displayRefinedResults function
             function displayRefinedResults(data) {
-    try {
-        // Clear previous results
-        analysisList.innerHTML = '';
+                try {
+                    analysisList.innerHTML = '';
+                    if (data.error) {
+                        analysisList.innerHTML = `<li class="analysis-item"><i class="fas fa-exclamation-circle warning-icon"></i> ${data.error}</li>`;
+                        resultBadge.className = 'result-badge badge-danger';
+                        resultBadge.textContent = 'Error';
+                        return;
+                    }
 
-        // Handle errors in the response
-        if (data.error) {
-            analysisList.innerHTML = `<li class="analysis-item"><i class="fas fa-exclamation-circle warning-icon"></i> ${data.error}</li>`;
-            return;
-        }
+                    const aiScore = data.ai_score || 0;
+                    const prediction = data.prediction || "Unknown";
+                    const details = data.details || {};
 
-        // Extract AI score and prediction from the response
-        const aiScore = data.ai_score || 0; // Default to 0 if not provided
-        const prediction = data.prediction || "unknown"; // Default to "unknown" if not provided
-        const details = data.details || {}; // Default to an empty object if not provided
+                    const aiPercent = Math.round(aiScore * 100);
+                    const humanPercent = 100 - aiPercent;
 
-        // Calculate percentages
-        const aiPercent = Math.round(aiScore * 100);
-        const humanPercent = 100 - aiPercent;
+                    aiPercentage.textContent = `${aiPercent}%`;
+                    humanPercentage.textContent = `${humanPercent}%`;
+                    aiProgressBar.style.width = `${aiPercent}%`;
+                    humanProgressBar.style.width = `${humanPercent}%`;
 
-        // Update progress bars and percentages
-        aiPercentage.textContent = `${aiPercent}%`;
-        humanPercentage.textContent = `${humanPercent}%`;
-        aiProgressBar.style.width = `${aiPercent}%`;
-        humanProgressBar.style.width = `${humanPercent}%`;
+                    if (aiPercent >= 75) {
+                        resultBadge.className = 'result-badge badge-danger';
+                        resultBadge.textContent = 'High Risk';
+                    } else if (aiPercent >= 50) {
+                        resultBadge.className = 'result-badge badge-warning';
+                        resultBadge.textContent = 'Medium Risk';
+                    } else {
+                        resultBadge.className = 'result-badge badge-success';
+                        resultBadge.textContent = 'Low Risk';
+                    }
 
-        // Update risk badge based on AI probability
-        if (aiPercent >= 75) {
-            resultBadge.className = 'result-badge badge-danger';
-            resultBadge.textContent = 'High Risk';
-        } else if (aiPercent >= 50) {
-            resultBadge.className = 'result-badge badge-warning';
-            resultBadge.textContent = 'Medium Risk';
-        } else {
-            resultBadge.className = 'result-badge badge-success';
-            resultBadge.textContent = 'Low Risk';
-        }
+                    const analysisItems = [
+                        `<i class="fas fa-robot info-icon"></i> Prediction: ${prediction}`,
+                        `<i class="fas fa-percentage info-icon"></i> AI Probability: ${aiPercent}%`,
+                        `<i class="fas fa-info-circle info-icon"></i> Confidence: ${details.confidence || 'N/A'}`
+                    ];
 
-        // Build analysis items for the UI
-        const analysisItems = [
-            `<i class="fas fa-robot"></i> Prediction: ${prediction}`,
-            `<i class="fas fa-percentage"></i> AI Score: ${(aiScore * 100).toFixed(1)}%`,
-            `<i class="fas fa-info-circle"></i> Confidence: ${details.confidence || 'N/A'}`
-        ];
+                    if (details.model_name) {
+                        analysisItems.push(`<i class="fas fa-microchip info-icon"></i> Model: ${details.model_name}`);
+                    }
 
-        // Add additional details if available
-        if (details.model_name) {
-            analysisItems.push(`<i class="fas fa-microchip"></i> Model: ${details.model_name}`);
-        }
-        if (details.analysis) {
-            analysisItems.push(`<i class="fas fa-chart-bar"></i> Analysis: ${JSON.stringify(details.analysis)}`);
-        }
+                    analysisList.innerHTML = analysisItems.map(item => 
+                        `<li class="analysis-item">${item}</li>`
+                    ).join('');
 
-        // Update the analysis list in the UI
-        analysisList.innerHTML = analysisItems.map(item => 
-            `<li class="analysis-item">${item}</li>`
-        ).join('');
-
-    } catch (error) {
-        // Handle unexpected errors
-        analysisList.innerHTML = `<li class="analysis-item"><i class="fas fa-exclamation-circle warning-icon"></i> Error processing results: ${error.message}</li>`;
-        console.error('Display error:', error);
-    }
-}        });
+                } catch (error) {
+                    analysisList.innerHTML = `<li class="analysis-item"><i class="fas fa-exclamation-circle warning-icon"></i> Error processing results: ${error.message}</li>`;
+                    resultBadge.className = 'result-badge badge-danger';
+                    resultBadge.textContent = 'Error';
+                    console.error('Display error:', error);
+                }
+            }
+        });
     </script>
 </body>
 </html>
