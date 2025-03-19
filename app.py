@@ -73,7 +73,7 @@ def home():
     return render_template("plagiarism_checker.html", link={}, percent=0)
 
 # Function to create clusters based on cosine similarity
-def create_clusters(texts, threshold=0.7):
+def create_clusters(texts, threshold=0.3):
     try:
         if len(texts) == 1:
             logging.info("Only one file provided, creating a single cluster without similarity.")
@@ -199,8 +199,8 @@ def generate_text_cluster_pdf():
 
 
 # AI Detection
-tokenizer = AutoTokenizer.from_pretrained("Hello-SimpleAI/chatgpt-detector-roberta")
-model = AutoModelForSequenceClassification.from_pretrained("Hello-SimpleAI/chatgpt-detector-roberta")
+tokenizer = AutoTokenizer.from_pretrained("pritamdeb68/BERTAIDetector")
+model = AutoModelForSequenceClassification.from_pretrained("pritamdeb68/BERTAIDetector")
 model.eval()
 
 @app.route('/detect_ai_content/', methods=['POST'])
