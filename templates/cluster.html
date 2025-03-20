@@ -265,6 +265,24 @@
             color: var(--primary);
         }
         
+        .file-item-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .file-item-actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+        
+        .file-item-actions .remove-btn:hover {
+            color: var(--danger);
+        }
+        
         /* Cluster Results */
         .cluster-grid {
             display: grid;
@@ -370,6 +388,54 @@
             color: var(--danger);
             border: 1px solid rgba(239, 71, 111, 0.3);
         }
+
+        /* Modal Styling */
+        .modal {
+            position: fixed;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            width: 300px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1000;
+            padding: 1rem;
+            transition: var(--transition);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--light-gray);
+            margin-bottom: 0.5rem;
+            cursor: move; /* Indicates draggable area */
+        }
+        
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--danger);
+            font-size: 1.2rem;
+        }
+        
+        .modal-body {
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
         
         /* Responsive Design */
         @media (max-width: 992px) {
@@ -385,6 +451,15 @@
             
             .navbar-menu {
                 display: none;
+            }
+            .modal {
+                width: 80%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .modal {
+                width: 90%;
             }
         }
     </style>
@@ -434,7 +509,13 @@
                     <button class="btn btn-primary">
                         <i class="fas fa-folder-open"></i> Select Folder
                     </button>
-                    <input type="file" id="folderInput" webkitdirectory directory multiple class="file-input">
+                    <input type="file" id="folderInput" webkitdirectory directory multiple class="file-input" accept=".txt,.doc,.docx,.pdf">
+                </div>
+                <div class="file-input-wrapper">
+                    <button class="btn btn-primary">
+                        <i class="fas fa-plus-circle"></i> Add More Files
+                    </button>
+                    <input type="file" id="addFilesInput" multiple class="file-input" accept=".txt,.doc,.docx,.pdf">
                 </div>
             </div>
             
@@ -494,33 +575,103 @@
     </div>
     
     <script>
-        document.getElementById("folderInput").addEventListener("change", function() {
-            const files = Array.from(this.files);
+        // Global variables to store file contents, modal count, and selected files
+        let fileContents = {};
+        let modalCount = 0;
+        let selectedFiles = new Map(); // Map to store files (key: file name, value: File object)
+
+        // Display uploaded files and store their contents
+        function displayUploadedFiles(files, isAddMore = false) {
             const uploadedFilesList = document.getElementById("uploadedFiles");
             const fileListContainer = document.getElementById("fileListContainer");
             const fileCount = document.getElementById("fileCount");
-            
-            if (files.length > 0) {
-                fileListContainer.style.display = "block";
-                fileCount.textContent = files.length;
-                uploadedFilesList.innerHTML = "";
-                
-                files.forEach(file => {
-                    const listItem = document.createElement("li");
-                    listItem.className = "file-item";
-                    listItem.innerHTML = `
-                        <i class="fas fa-file-alt file-icon"></i>
-                        <span>${file.name}</span>
-                    `;
-                    uploadedFilesList.appendChild(listItem);
-                });
-            } else {
+
+            // If not adding more files, clear the existing list
+            if (!isAddMore) {
+                selectedFiles.clear();
+                fileContents = {};
+                uploadedFilesList.innerHTML = '';
+            }
+
+            // Add new files to the selectedFiles Map
+            Array.from(files).forEach(file => {
+                const filePath = file.webkitRelativePath || file.name;
+                selectedFiles.set(filePath, file);
+            });
+
+            // Update file count
+            fileCount.textContent = selectedFiles.size;
+
+            if (selectedFiles.size === 0) {
                 fileListContainer.style.display = "none";
+                return;
+            }
+
+            fileListContainer.style.display = "block";
+
+            // Display the updated list of files
+            uploadedFilesList.innerHTML = '';
+            selectedFiles.forEach((file, filePath) => {
+                const listItem = document.createElement("li");
+                listItem.className = "file-item";
+                listItem.innerHTML = `
+                    <i class="fas fa-file-alt file-icon"></i>
+                    <span>${filePath}</span>
+                    <div class="file-item-actions">
+                        <button class="remove-btn" onclick="removeFile('${filePath}')">
+                            <i class="fas fa-trash-alt" style="color: var(--gray);"></i>
+                        </button>
+                    </div>
+                `;
+                uploadedFilesList.appendChild(listItem);
+
+                // Read and store file content if not already stored
+                if (!fileContents[filePath]) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        fileContents[filePath] = reader.result;
+                    };
+                    reader.readAsText(file);
+                }
+            });
+        }
+
+        // Remove a file from the list
+        function removeFile(filePath) {
+            // Remove from selectedFiles and fileContents
+            selectedFiles.delete(filePath);
+            delete fileContents[filePath];
+
+            // Update the displayed list
+            displayUploadedFiles(selectedFiles.values(), true);
+
+            // Reset the file input to reflect the updated file list
+            updateFileInput();
+        }
+
+        // Update the file input to reflect the current selectedFiles
+        function updateFileInput() {
+            const dataTransfer = new DataTransfer();
+            selectedFiles.forEach(file => {
+                dataTransfer.items.add(file);
+            });
+            document.getElementById('folderInput').files = dataTransfer.files;
+        }
+
+        // Handle file input change for folder selection
+        document.getElementById("folderInput").addEventListener("change", function() {
+            displayUploadedFiles(this.files, false);
+        });
+
+        // Handle file input change for adding more files
+        document.getElementById("addFilesInput").addEventListener("change", function() {
+            if (this.files.length > 0) {
+                displayUploadedFiles(this.files, true);
             }
         });
 
+        // Handle analyze and cluster button click
         document.getElementById("checkSimilarity").addEventListener("click", function() {
-            const files = document.getElementById("folderInput").files;
             const loadingIndicator = document.getElementById("loadingIndicator");
             const resultsCard = document.getElementById("resultsCard");
             const emptyState = document.getElementById("emptyState");
@@ -528,27 +679,27 @@
             const pdfDownload = document.getElementById("pdfDownload");
             const pdfError = document.getElementById("pdfError");
             
-            if (files.length === 0) {
+            if (selectedFiles.size === 0) {
                 alert("Please upload some files first.");
                 return;
             }
             
-            // Show loading indicator
             loadingIndicator.style.display = "block";
             resultsCard.style.display = "none";
             pdfDownload.style.display = "none";
             pdfError.style.display = "none";
             
-            let fileData = [];
-            const readerPromises = Array.from(files).map(file => {
-                return new Promise(resolve => {
-                    let reader = new FileReader();
-                    reader.onload = () => resolve({ name: file.name, content: reader.result });
-                    reader.readAsText(file);
+            const readFile = (file) => new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve({
+                    name: file.webkitRelativePath || file.name,
+                    content: e.target.result
                 });
+                reader.onerror = () => resolve({ name: file.name, content: "" }); // Handle read errors
+                reader.readAsText(file);
             });
 
-            Promise.all(readerPromises).then(filesData => {
+            Promise.all(Array.from(selectedFiles.values()).map(readFile)).then(filesData => {
                 fetch("/compare-texts/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -556,7 +707,6 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    // Hide loading indicator
                     loadingIndicator.style.display = "none";
                     resultsCard.style.display = "block";
                     clusterResults.innerHTML = "";
@@ -580,7 +730,22 @@
                     
                     emptyState.style.display = "none";
                     
-                    data.forEach(cluster => {
+                    // Sort clusters by avg_similarity (descending)
+                    data.sort((a, b) => {
+                        if (a.avg_similarity === undefined && b.avg_similarity === undefined) return 0;
+                        if (a.avg_similarity === undefined) return 1;
+                        if (b.avg_similarity === undefined) return -1;
+                        return b.avg_similarity - a.avg_similarity;
+                    });
+
+                    // Resequence cluster IDs for display
+                    const resequencedClusters = data.map((cluster, index) => ({
+                        ...cluster,
+                        display_id: index // Add a display_id for sequential numbering
+                    }));
+
+                    // Display clusters with resequenced IDs
+                    resequencedClusters.forEach(cluster => {
                         const clusterDiv = document.createElement("div");
                         clusterDiv.className = "cluster-card";
                         
@@ -591,12 +756,12 @@
                             similarityColor = cluster.avg_similarity >= 80 ? "var(--success)" : 
                                             cluster.avg_similarity >= 50 ? "var(--warning)" : "var(--danger)";
                         } else {
-                            similarityColor = "var(--primary)"; // Default color if no similarity
+                            similarityColor = "var(--primary)";
                         }
                         
                         clusterDiv.innerHTML = `
                             <div class="cluster-header">
-                                <div class="cluster-title">Cluster ${cluster.cluster_id}</div>
+                                <div class="cluster-title">Cluster ${cluster.display_id}</div>
                                 ${cluster.avg_similarity !== undefined ? `
                                     <div class="similarity-badge" style="background-color: rgba(${similarityColor}, 0.15); color: ${similarityColor};">
                                         ${cluster.avg_similarity.toFixed(1)}% Similar
@@ -605,7 +770,7 @@
                             </div>
                             <div class="cluster-files">
                                 ${cluster.names.map(name => `
-                                    <div class="cluster-file-item">
+                                    <div class="cluster-file-item" onclick="showFileContent('${name}')" style="cursor: pointer;">
                                         <i class="fas fa-file-alt" style="color: var(--primary);"></i>
                                         ${name}
                                     </div>
@@ -631,8 +796,109 @@
                     `;
                     console.error("Error:", error);
                 });
+            }).catch(error => {
+                loadingIndicator.style.display = "none";
+                resultsCard.style.display = "block";
+                emptyState.style.display = "block";
+                emptyState.innerHTML = `
+                    <div class="empty-state-icon">
+                        <i class="fas fa-exclamation-circle" style="color: var(--danger);"></i>
+                    </div>
+                    <h3>Error reading files</h3>
+                    <p>Some files could not be read. Please ensure they are accessible and try again.</p>
+                `;
+                console.error("File read error:", error);
             });
         });
+
+        // Function to display file content in a modal
+        function showFileContent(fileName) {
+            if (!fileContents[fileName]) {
+                alert("Content not available for " + fileName);
+                return;
+            }
+
+            // Create modal
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.id = `modal-${modalCount++}`;
+            
+            // Position modal within viewport
+            const viewportWidth = window.innerWidth;
+            const modalWidth = 300; // Matches CSS width
+            const maxLeft = viewportWidth - modalWidth - 20; // 20px padding from right edge
+            let leftPosition = 20 + ((modalCount - 1) % 4) * (modalWidth + 10); // 4 modals per row, 10px gap
+            leftPosition = Math.min(leftPosition, maxLeft); // Ensure it stays within viewport
+            const topPosition = 50 + Math.floor((modalCount - 1) / 4) * (modalWidth + 10); // Stack rows vertically
+
+            modal.style.left = `${leftPosition}px`;
+            modal.style.top = `${topPosition}px`;
+
+            modal.innerHTML = `
+                <div class="modal-header">
+                    <div class="modal-title">
+                        <i class="fas fa-file-alt" style="color: var(--primary);"></i>
+                        ${fileName}
+                    </div>
+                    <button class="modal-close" onclick="this.closest('.modal').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    ${fileContents[fileName]}
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Make modal draggable
+            makeDraggable(modal);
+        }
+
+        // Function to make modals draggable
+        function makeDraggable(element) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            const header = element.querySelector('.modal-header');
+
+            header.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+
+                // Calculate new position
+                let newTop = element.offsetTop - pos2;
+                let newLeft = element.offsetLeft - pos1;
+
+                // Constrain within viewport
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const modalWidth = element.offsetWidth;
+                const modalHeight = element.offsetHeight;
+
+                newTop = Math.max(0, Math.min(newTop, viewportHeight - modalHeight));
+                newLeft = Math.max(0, Math.min(newLeft, viewportWidth - modalWidth));
+
+                element.style.top = newTop + "px";
+                element.style.left = newLeft + "px";
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
 
         // Generate PDF
         function generatePDF() {
@@ -640,10 +906,9 @@
                 const clusterData = {
                     cluster_id: cluster.querySelector('.cluster-title').textContent.replace('Cluster ', '').trim(),
                     names: Array.from(cluster.querySelectorAll('.cluster-file-item')).map(item => 
-                        item.textContent.trim().replace(/^(.*?\s+)/, '') // Remove icon and extra spaces
+                        item.textContent.trim().replace(/^(.*?\s+)/, '')
                     )
                 };
-                // Only add avg_similarity if it exists
                 const similarityElement = cluster.querySelector('.similarity-badge');
                 if (similarityElement) {
                     clusterData.avg_similarity = similarityElement.textContent.match(/\d+(\.\d+)?/)[0];
@@ -689,7 +954,7 @@
             });
         }
         
-        // For drag and drop functionality in the upload area
+        // Drag and drop functionality
         const uploadArea = document.querySelector('.upload-area');
         
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -718,6 +983,11 @@
             uploadArea.style.backgroundColor = 'rgba(72, 149, 239, 0.05)';
             uploadArea.style.borderColor = 'var(--primary-light)';
         }
+
+        uploadArea.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            displayUploadedFiles(files, true);
+        });
     </script>
 </body>
 </html>
