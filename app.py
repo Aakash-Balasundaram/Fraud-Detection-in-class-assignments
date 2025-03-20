@@ -713,41 +713,110 @@ def assignment_func():
                 "http://127.0.0.1:5000/ai_refined/",
                 json={"text": text}
             ).json()
-            print(ai_response)
+            print("AI Detection Response:", ai_response)  # Fixed indentation here
+            ai_percentage = ai_response.get("ai_score", 0) * 100  # Convert to percentage
             
-            if "error" in ai_response:
-                logging.error(f"AI detection failed for {file_name}: {ai_response['error']}")
-                ai_percentage = 0.0
-            else:
-                # Extract ai_score from ai_refined response and convert to percentage
-                ai_percentage = float(ai_response["ai_score"]) * 100
-                print(ai_percentage)
-                
             # Plagiarism Detection
-            try:
-                plagiarism_percentage, _ = findSimilarity(text)
-                plagiarism_percentage = round(plagiarism_percentage, 2)
-            except Exception as e:
-                logging.error(f"Plagiarism detection failed for {file_name}: {str(e)}")
-                plagiarism_percentage = 0.0
+            percent, _ = findSimilarity(text)
+            plagiarism_percentage = round(percent, 2)
             
-            # Store in database
+            # Store results in database
             insert_analysis_results(table_name, file_name, ai_percentage, plagiarism_percentage)
+            
+            # Add to results for response
             results.append({
                 "file_name": file_name,
                 "ai_percentage": ai_percentage,
-                "plagiarism_percentage": plagiarism_percentage,
-                # Optional: Include additional details from ai_refined if needed
-                "ai_details": {
-                    "prediction": ai_response.get("prediction", ""),
-                    "confidence": ai_response.get("details", {}).get("confidence", ""),
-                    "human_confidence": ai_response.get("details", {}).get("human_confidence", "")
-                } if "error" not in ai_response else {}
+                "plagiarism_percentage": plagiarism_percentage
             })
-        return jsonify({'results': results, 'table_name': table_name})
-    return render_template('assignment.html')
+        
+        return jsonify({"assignment_name": assignment_name, "results": results})
+    
+    elif request.method == 'GET':
+        assignment_name = request.args.get("assignment_name", "")
+        if not assignment_name:
+            return jsonify({'error': 'Assignment name is required'}), 400
+        
+        table_name = re.sub(r'[^a-zA-Z0-9_]', '_', assignment_name)
+        if not table_name or table_name[0].isdigit():
+            table_name = f"assignment_{table_name}"
+        
+        results = get_analysis_results(table_name)
+        return jsonify({"assignment_name": assignment_name, "results": results})
 
+@app.route('/generate_assignment_report', methods=['POST'])
+def generate_assignment_report():
+    try:
+        data = request.get_json()
+        assignment_name = data.get('assignment_name', '')
+        results = data.get('results', [])
+        
+        html = render_template_string('''
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 1in; line-height: 1.6; }
+                    h1 { color: #2b2d42; font-size: 24px; border-bottom: 2px solid #4361ee; padding-bottom: 5px; }
+                    .report-info { font-size: 12px; color: #666; margin-bottom: 20px; }
+                    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                    th { background-color: #f2f2f2; color: #333; }
+                    tr:nth-child(even) { background-color: #f9f9f9; }
+                    .warning { background-color: #ffdddd; }
+                    .caution { background-color: #ffffcc; }
+                </style>
+            </head>
+            <body>
+                <h1>Assignment Analysis Report: {{ assignment_name }}</h1>
+                <div class="report-info">Generated on: {{ timestamp }}</div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>File Name</th>
+                            <th>AI-Generated Content (%)</th>
+                            <th>Plagiarism (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in results %}
+                        <tr class="{% if result.ai_percentage > 70 or result.plagiarism_percentage > 30 %}warning{% elif result.ai_percentage > 50 or result.plagiarism_percentage > 20 %}caution{% endif %}">
+                            <td>{{ result.file_name }}</td>
+                            <td>{{ "%.1f"|format(result.ai_percentage) }}%</td>
+                            <td>{{ "%.1f"|format(result.plagiarism_percentage) }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        ''', assignment_name=assignment_name, results=results, timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        
+        try:
+            config = pdfkit.configuration()
+        except Exception as e:
+            logging.warning(f"wkhtmltopdf not found in PATH, using hardcoded path: {str(e)}")
+            config = pdfkit.configuration(wkhtmltopdf='C:/Program Files/wkhtmltopdf/bin/wkhtmltopdf.exe')
+            
+        pdf = pdfkit.from_string(html, False, options={
+            'page-size': 'A4',
+            'margin-top': '0.5in',
+            'margin-right': '0.5in',
+            'margin-bottom': '0.5in',
+            'margin-left': '0.5in',
+            'encoding': 'UTF-8'
+        }, configuration=config)
+        
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename={re.sub(r"[^a-zA-Z0-9_]", "_", assignment_name)}_report.pdf'
+        return response
+    
+    except Exception as e:
+        logging.error(f"PDF generation error: {str(e)}")
+        return jsonify({'error': f'Failed to generate PDF: {str(e)}'}), 500
 
+# Start the Flask application
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
-
+    app.run(debug=True)
