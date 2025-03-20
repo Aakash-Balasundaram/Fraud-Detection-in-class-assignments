@@ -706,20 +706,23 @@ def assignment_func():
         for file in files_data:
             file_name = file.get("name", "")
             text = file.get("content", "")
-            print(file_name,text)
-            # AI Detection
+            print(file_name, text)
+            
+            # AI Detection using ai_refined endpoint
             ai_response = requests.post(
-                "http://127.0.0.1:5000/detect_ai_content/",
+                "http://127.0.0.1:5000/ai_refined/",
                 json={"text": text}
             ).json()
             print(ai_response)
+            
             if "error" in ai_response:
                 logging.error(f"AI detection failed for {file_name}: {ai_response['error']}")
                 ai_percentage = 0.0
             else:
-                ai_percentage = ai_response["ai_probability"]*100 # Scale to percentage
+                # Extract ai_score from ai_refined response and convert to percentage
+                ai_percentage = float(ai_response["ai_score"]) * 100
                 print(ai_percentage)
-                 
+                
             # Plagiarism Detection
             try:
                 plagiarism_percentage, _ = findSimilarity(text)
@@ -727,12 +730,19 @@ def assignment_func():
             except Exception as e:
                 logging.error(f"Plagiarism detection failed for {file_name}: {str(e)}")
                 plagiarism_percentage = 0.0
+            
             # Store in database
             insert_analysis_results(table_name, file_name, ai_percentage, plagiarism_percentage)
             results.append({
                 "file_name": file_name,
                 "ai_percentage": ai_percentage,
-                "plagiarism_percentage": plagiarism_percentage
+                "plagiarism_percentage": plagiarism_percentage,
+                # Optional: Include additional details from ai_refined if needed
+                "ai_details": {
+                    "prediction": ai_response.get("prediction", ""),
+                    "confidence": ai_response.get("details", {}).get("confidence", ""),
+                    "human_confidence": ai_response.get("details", {}).get("human_confidence", "")
+                } if "error" not in ai_response else {}
             })
         return jsonify({'results': results, 'table_name': table_name})
     return render_template('assignment.html')
@@ -740,3 +750,4 @@ def assignment_func():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
