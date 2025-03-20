@@ -209,7 +209,7 @@
         margin-top: auto;
       }
 
-      /* Center assignment button styles */
+      /* Center assignment button styles - Updated for vertical centering */
       .center-card {
         text-align: center;
         background: white;
@@ -217,6 +217,10 @@
         padding: 30px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         border: 2px solid var(--secondary);
+        display: flex;
+        flex-direction: column;
+        justify-content: center; /* Center content vertically */
+        align-items: center; /* Center content horizontally */
       }
 
       .purchase-title {
@@ -228,6 +232,7 @@
       .purchase-description {
         color: var(--gray-dark);
         margin-bottom: 25px;
+        max-width: 90%; /* Limit width for better readability */
       }
 
       .purchase-button {
@@ -305,7 +310,6 @@
           </div>
           <div class="navbar-menu">
             <a href="{{ url_for('plagiarism_checker') }}"><i class="fas fa-copy"></i> Plagiarism Checker</a>
-            <a href="{{ url_for('assignment') }}"><i class="fas fa-file-alt"></i> Assignment Check</a>
             <a href="{{ url_for('ai_detection') }}"><i class="fas fa-robot"></i> AI Detection</a>
             <a href="{{ url_for('cluster') }}"><i class="fas fa-layer-group"></i> Text Cluster</a>
             <a href="{{ url_for('code_cluster') }}"><i class="fas fa-code"></i> Code Similarity</a>
