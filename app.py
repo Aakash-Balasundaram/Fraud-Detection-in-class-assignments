@@ -21,8 +21,8 @@ import pdfkit
 from datetime import datetime
 import sqlite3
 from sklearn.preprocessing import normalize
-import requests
-# Configure logging at the top
+
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
@@ -57,10 +57,6 @@ def ai_detection():
 def code_cluster():
     return render_template("code_cluster.html")
 
-@app.route('/trend_analysis/')
-def trend_analysis():
-    return render_template("trend_analysis.html")
-
 @app.route('/assignment/')
 def assignment():
     return render_template("assignment.html")
@@ -71,8 +67,10 @@ def plagiarism_checker():
 
 @app.route('/home')
 def home():
-    return render_template("plagiarism_checker.html", link={}, percent=0)
-
+    return render_template("index.html", link={}, percent=0)
+@app.route('/trend_analysis')
+def trend_analysis():
+    return render_template("trend_analysis.html")
 # Function to create clusters based on cosine similarity
 def create_clusters(texts, threshold=0.3):
     try:
@@ -105,8 +103,6 @@ def create_clusters(texts, threshold=0.3):
     except Exception as e:
         logging.error(f"Error in create_clusters: {str(e)}")
         return [], []
-    
-
 
 @app.route('/compare-texts/', methods=['POST'])
 def cluster_files():
@@ -200,7 +196,6 @@ def generate_text_cluster_pdf():
         logging.error(f"PDF generation error: {str(e)}")
         return jsonify({'error': f'Failed to generate PDF: {str(e)}'}), 500
 
-
 # AI Detection
 tokenizer = AutoTokenizer.from_pretrained("pritamdeb68/BERTAIDetector")
 model = AutoModelForSequenceClassification.from_pretrained("pritamdeb68/BERTAIDetector")
@@ -228,8 +223,7 @@ def detect_ai_content():
         logging.error(f"Error in detect_ai_content_api: {str(e)}", exc_info=True)
         return jsonify({"error": "Internal server error"}), 500
 
-
-# Replace the standalone RapidAPI request and incomplete route with this complete version
+# Restored original /ai_refined/ endpoint with RapidAPI
 @app.route('/ai_refined/', methods=['POST'])
 def ai_refined():
     try:
@@ -246,7 +240,7 @@ def ai_refined():
             "x-rapidapi-host": "ai-content-detector-ai-gpt.p.rapidapi.com",
             "Content-Type": "application/json"
         }
-        payload = {"text": text}  # Use the frontend text input
+        payload = {"text": text}
 
         # Send request to RapidAPI
         response = requests.post(url, json=payload, headers=headers)
@@ -284,6 +278,7 @@ def ai_refined():
     except Exception as e:
         logging.error(f"Error in ai_refined: {str(e)}", exc_info=True)
         return jsonify({"error": "Internal server error"}), 500
+
 # Plagiarism Detection Functions
 WORD = re.compile(r'\w+')
 
@@ -683,12 +678,24 @@ def get_analysis_results(table_name):
     try:
         conn = sqlite3.connect('assignments.db')
         cursor = conn.cursor()
-        cursor.execute(f'SELECT file_name, ai_percentage, plagiarism_percentage FROM {table_name}')
+        cursor.execute(f'SELECT id, file_name, ai_percentage, plagiarism_percentage FROM {table_name}')
         results = cursor.fetchall()
         conn.close()
-        return [{"file_name": row[0], "ai_percentage": row[1], "plagiarism_percentage": row[2]} for row in results]
+        return [{"id": row[0], "file_name": row[1], "ai_percentage": row[2], "plagiarism_percentage": row[3]} for row in results]
     except Exception as e:
         logging.error(f"Error retrieving data: {str(e)}")
+        return []
+
+def get_all_assignment_tables():
+    try:
+        conn = sqlite3.connect('assignments.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'assignment_%'")
+        tables = cursor.fetchall()
+        conn.close()
+        return [table[0] for table in tables]
+    except Exception as e:
+        logging.error(f"Error retrieving assignment tables: {str(e)}")
         return []
 
 @app.route('/assignment_func', methods=['GET', 'POST'])
@@ -699,50 +706,74 @@ def assignment_func():
         files_data = data.get("files", [])
         if not assignment_name or not files_data:
             return jsonify({'error': 'Assignment name and files are required'}), 400
+        
+        # Create table for the assignment
         table_name = create_assignment_table(assignment_name)
         if not table_name:
             return jsonify({'error': 'Failed to create assignment table'}), 500
+        
         results = []
         for file in files_data:
             file_name = file.get("name", "")
             text = file.get("content", "")
-            print(file_name, text)
+            if not file_name or not text:
+                continue
             
             # AI Detection using ai_refined endpoint
             ai_response = requests.post(
                 "http://127.0.0.1:5000/ai_refined/",
                 json={"text": text}
             ).json()
-            print("AI Detection Response:", ai_response)  # Fixed indentation here
-            ai_percentage = ai_response.get("ai_score", 0) * 100  # Convert to percentage
+            print("AI Detection Response:", ai_response)
+            
+            if "error" in ai_response:
+                logging.error(f"AI detection failed for {file_name}: {ai_response['error']}")
+                ai_percentage = 0.0
+            else:
+                ai_percentage = round(float(ai_response["ai_score"]) * 100, 2)  # Convert to percentage
             
             # Plagiarism Detection
-            percent, _ = findSimilarity(text)
-            plagiarism_percentage = round(percent, 2)
+            try:
+                plagiarism_percentage, _ = findSimilarity(text)
+                plagiarism_percentage = round(plagiarism_percentage, 2)
+            except Exception as e:
+                logging.error(f"Plagiarism detection failed for {file_name}: {str(e)}")
+                plagiarism_percentage = 0.0
             
-            # Store results in database
+            # Store in database
             insert_analysis_results(table_name, file_name, ai_percentage, plagiarism_percentage)
             
-            # Add to results for response
-            results.append({
-                "file_name": file_name,
-                "ai_percentage": ai_percentage,
-                "plagiarism_percentage": plagiarism_percentage
-            })
+            # Fetch the latest results from the database to include the ID
+            stored_results = get_analysis_results(table_name)
+            results = stored_results  # Update results with the latest from the database
         
-        return jsonify({"assignment_name": assignment_name, "results": results})
+        return jsonify({
+            "table_name": table_name,
+            "results": results
+        })
     
     elif request.method == 'GET':
+        # If an assignment_name is provided, fetch results for that assignment
         assignment_name = request.args.get("assignment_name", "")
-        if not assignment_name:
-            return jsonify({'error': 'Assignment name is required'}), 400
-        
-        table_name = re.sub(r'[^a-zA-Z0-9_]', '_', assignment_name)
-        if not table_name or table_name[0].isdigit():
-            table_name = f"assignment_{table_name}"
-        
-        results = get_analysis_results(table_name)
-        return jsonify({"assignment_name": assignment_name, "results": results})
+        if assignment_name:
+            table_name = re.sub(r'[^a-zA-Z0-9_]', '_', assignment_name)
+            if not table_name or table_name[0].isdigit():
+                table_name = f"assignment_{table_name}"
+            results = get_analysis_results(table_name)
+            return jsonify({
+                "table_name": table_name,
+                "results": results
+            })
+        else:
+            # Fetch all assignment tables
+            tables = get_all_assignment_tables()
+            all_assignments = {}
+            for table in tables:
+                results = get_analysis_results(table)
+                all_assignments[table] = results
+            return jsonify({
+                "assignments": all_assignments
+            })
 
 @app.route('/generate_assignment_report', methods=['POST'])
 def generate_assignment_report():
@@ -774,6 +805,7 @@ def generate_assignment_report():
                 <table>
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>File Name</th>
                             <th>AI-Generated Content (%)</th>
                             <th>Plagiarism (%)</th>
@@ -782,6 +814,7 @@ def generate_assignment_report():
                     <tbody>
                         {% for result in results %}
                         <tr class="{% if result.ai_percentage > 70 or result.plagiarism_percentage > 30 %}warning{% elif result.ai_percentage > 50 or result.plagiarism_percentage > 20 %}caution{% endif %}">
+                            <td>{{ result.id }}</td>
                             <td>{{ result.file_name }}</td>
                             <td>{{ "%.1f"|format(result.ai_percentage) }}%</td>
                             <td>{{ "%.1f"|format(result.plagiarism_percentage) }}%</td>
@@ -791,7 +824,7 @@ def generate_assignment_report():
                 </table>
             </body>
             </html>
-        ''', assignment_name=assignment_name, results=results, timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        ''', assignment_name=assignment_name, results=results, timestamp=datetime.now().strftime("%Y-%m-d %H:%M:%S"))
         
         try:
             config = pdfkit.configuration()
@@ -816,7 +849,59 @@ def generate_assignment_report():
     except Exception as e:
         logging.error(f"PDF generation error: {str(e)}")
         return jsonify({'error': f'Failed to generate PDF: {str(e)}'}), 500
-
-# Start the Flask application
+# app.py (updated endpoint)
+@app.route('/api/assignments')
+def get_all_assignments():
+    try:
+        conn = sqlite3.connect('assignments.db')
+        cursor = conn.cursor()
+        
+        # Get all non-system tables
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+        tables = [row[0] for row in cursor.fetchall()]
+        
+        assignments = {}
+        
+        for table in tables:
+            try:
+                # Verify table structure
+                cursor.execute(f"PRAGMA table_info({table})")
+                columns = [col[1].lower() for col in cursor.fetchall()]
+                required_columns = {'id', 'file_name', 'ai_percentage', 'plagiarism_percentage'}
+                
+                if not required_columns.issubset(columns):
+                    logging.warning(f"Skipping table {table} - invalid structure")
+                    continue
+                
+                # Get data
+                cursor.execute(f'''
+                    SELECT id, file_name, 
+                           CAST(ai_percentage AS REAL), 
+                           CAST(plagiarism_percentage AS REAL)
+                    FROM {table}
+                ''')
+                results = cursor.fetchall()
+                
+                # Clean table name
+                clean_name = table.replace('assignment_', ' ').replace('_', ' ').title()
+                assignments[clean_name.strip()] = [
+                    {
+                        "id": row[0],
+                        "file_name": row[1],
+                        "ai_percentage": float(row[2]),
+                        "plagiarism_percentage": float(row[3])
+                    } for row in results
+                ]
+                
+            except sqlite3.Error as e:
+                logging.error(f"Error processing {table}: {str(e)}")
+                continue
+        
+        conn.close()
+        return jsonify({"assignments": assignments})
+    
+    except Exception as e:
+        logging.error(f"Database error: {str(e)}")
+        return jsonify({"error": "Server error"}), 500
 if __name__ == '__main__':
     app.run(debug=True)
