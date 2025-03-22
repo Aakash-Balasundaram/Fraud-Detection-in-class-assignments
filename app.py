@@ -540,7 +540,7 @@ def cluster_code_files(files, threshold=0.85):
                 avg_similarity = round(np.mean(cosine_sim[np.ix_(indices, indices)]), 2) * 100
                 cluster_list.append({
                     "cluster_id": cluster_id,
-                    "names": filenames,
+                     "names": filenames,
                     "similarity": avg_similarity
                 })
         logging.info(f"Clusters JSON: {json.dumps(cluster_list, indent=4)}")
