@@ -374,6 +374,33 @@
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
         }
         
+        /* Download button styling */
+        .download-btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            border: none;
+            background: linear-gradient(135deg, var(--success) 0%, #04a57a 100%);
+            color: white;
+            box-shadow: 0 4px 10px rgba(6, 214, 160, 0.3);
+            margin-top: 1.5rem;
+        }
+        
+        .download-btn:hover {
+            box-shadow: 0 8px 20px rgba(6, 214, 160, 0.4);
+            transform: translateY(-3px);
+        }
+        
+        .download-btn:active {
+            transform: translateY(-1px);
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 1.5rem;
@@ -488,6 +515,7 @@
                 <table class="results-table" id="resultsTable">
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>File Name</th>
                             <th>AI Content (%)</th>
                             <th>Plagiarism (%)</th>
@@ -495,11 +523,21 @@
                     </thead>
                     <tbody></tbody>
                 </table>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button id="downloadPdfButton" class="download-btn">
+                        <i class="fas fa-file-pdf"></i> Download Results as PDF
+                    </button>
+                </div>
             </div>
             
             <div id="errorMessage" class="message-error" style="display: none;"></div>
         </div>
     </div>
+    
+    <!-- Include jsPDF library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     
     <script>
         document.getElementById("folderInput").addEventListener("change", function() {
@@ -567,9 +605,12 @@
                         return;
                     }
                     resultsCard.style.display = "block";
-                    data.results.forEach(result => {
+                    
+                    // Add index/ID column to results
+                    data.results.forEach((result, index) => {
                         const row = document.createElement("tr");
                         row.innerHTML = `
+                            <td>${index + 1}</td>
                             <td>${result.file_name}</td>
                             <td>${result.ai_percentage}%</td>
                             <td>${result.plagiarism_percentage}%</td>
@@ -584,6 +625,72 @@
                     console.error("Error:", error);
                 });
             });
+        });
+        
+        // PDF Download Functionality
+        document.getElementById("downloadPdfButton").addEventListener("click", function() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Get assignment name
+            const assignmentName = document.getElementById("assignmentName").value.trim();
+            const currentDate = new Date().toLocaleDateString();
+            
+            // Add title
+            doc.setFontSize(18);
+            doc.text(`Assignment Analysis: ${assignmentName}`, 14, 20);
+            
+            // Add date
+            doc.setFontSize(12);
+            doc.text(`Generated on: ${currentDate}`, 14, 30);
+            
+            // Extract data from table
+            const table = document.getElementById("resultsTable");
+            const tableData = [];
+            const tableHeaders = [];
+            
+            // Get headers
+            const headerRow = table.querySelector("thead tr");
+            const headerCells = headerRow.querySelectorAll("th");
+            headerCells.forEach(cell => {
+                tableHeaders.push(cell.textContent);
+            });
+            
+            // Get data rows
+            const rows = table.querySelectorAll("tbody tr");
+            rows.forEach(row => {
+                const rowData = [];
+                const cells = row.querySelectorAll("td");
+                cells.forEach(cell => {
+                    rowData.push(cell.textContent);
+                });
+                tableData.push(rowData);
+            });
+            
+            // Generate table in PDF
+            doc.autoTable({
+                head: [tableHeaders],
+                body: tableData,
+                startY: 40,
+                theme: 'grid',
+                styles: {
+                    fontSize: 10,
+                    cellPadding: 3,
+                    lineColor: [80, 80, 80],
+                    lineWidth: 0.1
+                },
+                headStyles: {
+                    fillColor: [67, 97, 238],
+                    textColor: 255,
+                    fontStyle: 'bold'
+                },
+                alternateRowStyles: {
+                    fillColor: [240, 240, 250]
+                }
+            });
+            
+            // Save PDF
+            doc.save(`${assignmentName}_analysis_results.pdf`);
         });
     </script>
 </body>
