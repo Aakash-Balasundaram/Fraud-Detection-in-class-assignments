@@ -832,4 +832,7 @@ return new Promise(resolve => setTimeout(resolve, 500)); // Give time for render
   // Use mock data for demo
   // fetchMockData();
 })}; // This is the missing closing brace for the DOMContentLoaded event listener
+
+
+
 </script>
