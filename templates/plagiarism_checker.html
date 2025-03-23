@@ -451,7 +451,7 @@
           <div class="results-panel score-result">
             {% if percent is defined %}
             <div class="score-circle">{{ percent }}%</div>
-            <div class="score-label">Fraud Probability</div>
+            <div class="score-label">Plagiarism percentage</div>
             {% else %}
             <div class="score-circle">-%</div>
             <div class="score-label">Submit content to check</div>
@@ -462,56 +462,353 @@
     </div>
 
     <script>
-      function makeVisible() {
-        document.getElementById("submit-button-2").style.visibility = "visible";
-        document.getElementById("submit-button-1").style.visibility = "hidden";
-
-        // Fix for tab switching
-        document
-          .getElementById("text-input-ws")
-          .classList.remove("show", "active");
-        document
-          .getElementById("file-input-ws")
-          .classList.add("show", "active");
-        document.getElementById("text-tab").classList.remove("active");
-        document.getElementById("file-tab").classList.add("active");
+      export function initializeDashboard() {
+  // Initialize variables
+  let assignments = [];
+  let assignmentData = {};
+  let aiThreshold = 50;
+  let plagiarismThreshold = 30;
+  let aiChart, plagiarismChart, trendsChart;
+  
+  // Setup the dashboard when DOM is loaded
+  document.addEventListener("DOMContentLoaded", function() {
+    // Initialize the dashboard UI
+    setupDashboardUI();
+    
+    // Load initial data
+    loadAssignmentData();
+    
+    // Set up event listeners
+    document.getElementById('ai-threshold').addEventListener('change', updateThresholds);
+    document.getElementById('plagiarism-threshold').addEventListener('change', updateThresholds);
+    document.getElementById('assignment-filter').addEventListener('change', filterAssignments);
+    
+    // Initialize charts
+    initializeCharts();
+  });
+  
+  function setupDashboardUI() {
+    // Set up initial UI state
+    document.getElementById('ai-threshold').value = aiThreshold;
+    document.getElementById('plagiarism-threshold').value = plagiarismThreshold;
+    
+    // Additional UI setup
+    updateStatusCounts();
+  }
+  
+  function loadAssignmentData() {
+    // This would typically be an API call
+    // For now, using placeholder data
+    assignments = [
+      { id: 1, title: 'Essay 1', aiScore: 65, plagiarismScore: 15 },
+      { id: 2, title: 'Research Paper', aiScore: 30, plagiarismScore: 45 },
+      { id: 3, title: 'Term Project', aiScore: 80, plagiarismScore: 10 }
+    ];
+    
+    // Process and organize data
+    processAssignmentData();
+    
+    // Update UI with data
+    displayAssignments();
+  }
+  
+  function processAssignmentData() {
+    // Process assignments into more usable format
+    assignmentData = {
+      highAI: assignments.filter(a => a.aiScore >= aiThreshold),
+      highPlagiarism: assignments.filter(a => a.plagiarismScore >= plagiarismThreshold),
+      flagged: assignments.filter(a => a.aiScore >= aiThreshold || a.plagiarismScore >= plagiarismThreshold),
+      clean: assignments.filter(a => a.aiScore < aiThreshold && a.plagiarismScore < plagiarismThreshold)
+    };
+  }
+  
+  function updateThresholds() {
+    // Update threshold values from UI
+    aiThreshold = parseInt(document.getElementById('ai-threshold').value);
+    plagiarismThreshold = parseInt(document.getElementById('plagiarism-threshold').value);
+    
+    // Reprocess data with new thresholds
+    processAssignmentData();
+    
+    // Update UI elements
+    updateStatusCounts();
+    displayAssignments();
+    updateCharts();
+  }
+  
+  function updateStatusCounts() {
+    // Update status counters in UI
+    document.getElementById('ai-count').textContent = assignmentData.highAI.length;
+    document.getElementById('plagiarism-count').textContent = assignmentData.highPlagiarism.length;
+    document.getElementById('flagged-count').textContent = assignmentData.flagged.length;
+    document.getElementById('clean-count').textContent = assignmentData.clean.length;
+  }
+  
+  function filterAssignments(event) {
+    // Filter the displayed assignments based on selection
+    const filter = event.target.value;
+    let filtered;
+    
+    switch(filter) {
+      case 'highAI':
+        filtered = assignmentData.highAI;
+        break;
+      case 'highPlagiarism':
+        filtered = assignmentData.highPlagiarism;
+        break;
+      case 'flagged':
+        filtered = assignmentData.flagged;
+        break;
+      case 'clean':
+        filtered = assignmentData.clean;
+        break;
+      default:
+        filtered = assignments;
+    }
+    
+    // Update assignment display
+    displayAssignments(filtered);
+  }
+  
+  function displayAssignments(filtered = assignments) {
+    // Display assignments in the UI
+    const container = document.getElementById('assignments-list');
+    container.innerHTML = '';
+    
+    filtered.forEach(assignment => {
+      const element = document.createElement('div');
+      element.className = 'assignment-item';
+      element.innerHTML = `
+        <h3>${assignment.title}</h3>
+        <div class="scores">
+          <span class="ai-score ${assignment.aiScore >= aiThreshold ? 'high' : ''}">
+            AI: ${assignment.aiScore}%
+          </span>
+          <span class="plagiarism-score ${assignment.plagiarismScore >= plagiarismThreshold ? 'high' : ''}">
+            Plagiarism: ${assignment.plagiarismScore}%
+          </span>
+        </div>
+      `;
+      container.appendChild(element);
+    });
+  }
+  
+  function initializeCharts() {
+    // Initialize AI Detection chart
+    const aiCtx = document.getElementById('ai-chart').getContext('2d');
+    aiChart = new Chart(aiCtx, {
+      type: 'bar',
+      data: {
+        labels: assignments.map(a => a.title),
+        datasets: [{
+          label: 'AI Detection Score',
+          data: assignments.map(a => a.aiScore),
+          backgroundColor: assignments.map(a => a.aiScore >= aiThreshold ? 'rgba(255, 99, 132, 0.5)' : 'rgba(54, 162, 235, 0.5)'),
+          borderColor: assignments.map(a => a.aiScore >= aiThreshold ? 'rgb(255, 99, 132)' : 'rgb(54, 162, 235)'),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100
+          }
+        }
       }
-
-      function makeInvisible() {
-        document.getElementById("submit-button-2").style.visibility = "hidden";
-        document.getElementById("submit-button-1").style.visibility = "visible";
-
-        // Fix for tab switching
-        document
-          .getElementById("file-input-ws")
-          .classList.remove("show", "active");
-        document
-          .getElementById("text-input-ws")
-          .classList.add("show", "active");
-        document.getElementById("file-tab").classList.remove("active");
-        document.getElementById("text-tab").classList.add("active");
+    });
+    
+    // Initialize Plagiarism chart
+    const plagiarismCtx = document.getElementById('plagiarism-chart').getContext('2d');
+    plagiarismChart = new Chart(plagiarismCtx, {
+      type: 'bar',
+      data: {
+        labels: assignments.map(a => a.title),
+        datasets: [{
+          label: 'Plagiarism Score',
+          data: assignments.map(a => a.plagiarismScore),
+          backgroundColor: assignments.map(a => a.plagiarismScore >= plagiarismThreshold ? 'rgba(255, 99, 132, 0.5)' : 'rgba(54, 162, 235, 0.5)'),
+          borderColor: assignments.map(a => a.plagiarismScore >= plagiarismThreshold ? 'rgb(255, 99, 132)' : 'rgb(54, 162, 235)'),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100
+          }
+        }
       }
-    </script>
+    });
+    
+    // Initialize Trends chart
+    const trendsCtx = document.getElementById('trends-chart').getContext('2d');
+    trendsChart = new Chart(trendsCtx, {
+      type: 'line',
+      data: {
+        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+        datasets: [
+          {
+            label: 'AI Detection Average',
+            data: [45, 52, 48, 56],
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            tension: 0.3
+          },
+          {
+            label: 'Plagiarism Average',
+            data: [25, 30, 28, 22],
+            borderColor: 'rgb(54, 162, 235)',
+            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100
+          }
+        }
+      }
+    });
+  }
+  
+  function updateCharts() {
+    // Update AI chart
+    aiChart.data.datasets[0].backgroundColor = assignments.map(a => 
+      a.aiScore >= aiThreshold ? 'rgba(255, 99, 132, 0.5)' : 'rgba(54, 162, 235, 0.5)'
+    );
+    aiChart.data.datasets[0].borderColor = assignments.map(a => 
+      a.aiScore >= aiThreshold ? 'rgb(255, 99, 132)' : 'rgb(54, 162, 235)'
+    );
+    aiChart.update();
+    
+    // Update Plagiarism chart
+    plagiarismChart.data.datasets[0].backgroundColor = assignments.map(a => 
+      a.plagiarismScore >= plagiarismThreshold ? 'rgba(255, 99, 132, 0.5)' : 'rgba(54, 162, 235, 0.5)'
+    );
+    plagiarismChart.data.datasets[0].borderColor = assignments.map(a => 
+      a.plagiarismScore >= plagiarismThreshold ? 'rgb(255, 99, 132)' : 'rgb(54, 162, 235)'
+    );
+    plagiarismChart.update();
+  }
+}
 
-    <!-- JQuery -->
-    <script
-      type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"
-    ></script>
-    <!-- Bootstrap tooltips -->
-    <script
-      type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"
-    ></script>
-    <!-- Bootstrap core JavaScript -->
-    <script
-      type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.0/js/bootstrap.min.js"
-    ></script>
-    <!-- MDB core JavaScript -->
-    <script
-      type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.19.1/js/mdb.min.js"
-    ></script>
+export async function searchWeb(text, output, c) {
+  // Show loading state if output has a loading property
+  if (output && typeof output.setLoading === 'function') {
+    output.setLoading(true);
+  }
+
+  try {
+    // Validate input parameters
+    if (!text || typeof text !== 'string') {
+      throw new Error('Invalid input: text must be a non-empty string');
+    }
+    
+    if (!c || !c.searchEngine_API || !c.searchEngine_Id) {
+      throw new Error('Missing API configuration: searchEngine_API and searchEngine_Id are required');
+    }
+
+    // Prepare search query - take first 128 characters to keep URL length reasonable
+    const searchQuery = encodeURIComponent(text.substring(0, 128));
+    
+    // Construct the API URL
+    const apiUrl = `https://www.googleapis.com/customsearch/v1?key=${c.searchEngine_API}&cx=${c.searchEngine_Id}&q=${searchQuery}`;
+    
+    // Call the Google Custom Search API
+    const response = await fetch(apiUrl);
+    
+    if (!response.ok) {
+      throw new Error(`API request failed with status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Process search results
+    const results = {
+      searchQuery: text.substring(0, 128),
+      sources: [],
+      totalResults: data.searchInformation?.totalResults || 0
+    };
+    
+    // If we have search results
+    if (data.items && data.items.length > 0) {
+      // Process each search result
+      results.sources = data.items.map(item => {
+        // Calculate similarity score
+        const similarityScore = calculateSimilarity(text, item.snippet || '');
+        
+        return {
+          title: item.title || 'Untitled',
+          link: item.link || '',
+          snippet: item.snippet || '',
+          similarityScore: similarityScore,
+          formattedUrl: item.formattedUrl || item.link || ''
+        };
+      });
+      
+      // Sort results by similarity score (highest first)
+      results.sources.sort((a, b) => b.similarityScore - a.similarityScore);
+    }
+    
+    // Store results in output object if provided
+    if (output) {
+      output.results = results;
+      if (typeof output.updateResults === 'function') {
+        output.updateResults(results);
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    console.error('Error in searchWeb function:', error);
+    
+    // Handle errors in output object if provided
+    if (output) {
+      output.error = error.message;
+      if (typeof output.setError === 'function') {
+        output.setError(error.message);
+      }
+    }
+    
+    throw error;
+  } finally {
+    // Reset loading state
+    if (output && typeof output.setLoading === 'function') {
+      output.setLoading(false);
+    }
+  }
+}
+
+export function calculateSimilarity(text1, text2) {
+  if (!text1 || !text2) return 0;
+  
+  // Convert texts to lowercase and split into words
+  const words1 = text1.toLowerCase().split(/\s+/);
+  const words2 = text2.toLowerCase().split(/\s+/);
+  
+  // Count matching words
+  let matchCount = 0;
+  const uniqueWords = new Set(words1);
+  
+  for (const word of words2) {
+    if (uniqueWords.has(word)) {
+      matchCount++;
+      uniqueWords.delete(word); // Avoid counting duplicates
+    }
+  }
+  
+  // Calculate Jaccard similarity coefficient
+  const totalUniqueWords = new Set([...words1, ...words2]).size;
+  const similarity = totalUniqueWords === 0 ? 0 : matchCount / totalUniqueWords;
+  
+  return parseFloat(similarity.toFixed(2));
+}
+
+</script>
   </body>
 </html>

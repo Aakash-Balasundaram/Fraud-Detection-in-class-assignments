@@ -53,7 +53,7 @@
         max-width: 1200px;
         margin: 0 auto;
         display: flex;
-        justify-content: flex-start; /* Changed to flex-start to align items to the left */
+        justify-content: flex-start;
         align-items: center;
         padding: 10px 25px;
       }
@@ -62,8 +62,8 @@
         display: flex;
         align-items: center;
         padding: 12px 0;
-        margin-right: 60px; /* Increased margin to create more gap */
-        white-space: nowrap; /* Prevent wrapping */
+        margin-right: 120px; /* Increased margin to create more gap between brand and navbar items */
+        white-space: nowrap;
       }
 
       .navbar-brand h1 {
@@ -79,14 +79,14 @@
 
       .navbar-menu {
         display: flex;
-        gap: 10px; /* Reduced gap between menu items */
+        gap: 25px; /* Gap between menu items */
         margin-left: auto; /* Push menu to the right */
       }
 
       .navbar-menu a {
         color: white;
         text-decoration: none;
-        padding: 15px 10px; /* Reduced horizontal padding */
+        padding: 15px 15px;
         font-size: 0.95rem;
         font-weight: 500;
         transition: all 0.3s ease;
@@ -337,6 +337,9 @@
               content originality and avoid copyright issues with our thorough
               analysis.
             </p>
+            <a href="{{ url_for('plagiarism_checker') }}" class="card-link">
+              Check for plagiarism <i class="fas fa-arrow-right"></i>
+            </a>
           </div>
           
           <div class="card center-card">
@@ -358,6 +361,9 @@
               patterns and markers typical of AI-generated content to verify
               authenticity.
             </p>
+            <a href="{{ url_for('ai_detection') }}" class="card-link">
+              Detect AI content <i class="fas fa-arrow-right"></i>
+            </a>
           </div>
         </div>
 
@@ -371,6 +377,9 @@
               Detect patterns, similarities, and relationships between texts
               using advanced AI analysis.
             </p>
+            <a href="{{ url_for('cluster') }}" class="card-link">
+              Analyze text similarity <i class="fas fa-arrow-right"></i>
+            </a>
           </div>
           
           <div class="card">
@@ -381,6 +390,9 @@
               reuse, and detect unauthorized copying in programming assignments
               or projects.
             </p>
+            <a href="{{ url_for('code_cluster') }}" class="card-link">
+              Check code similarity <i class="fas fa-arrow-right"></i>
+            </a>
           </div>
           
           <div class="card">
@@ -391,6 +403,9 @@
               in assignment risks using bar and pie charts, track plagiarism and AI detection
               percentages, and gain insights into evolving fraud patterns for informed decision-making.
             </p>
+            <a href="{{ url_for('trend_analysis') }}" class="card-link">
+              View trend analysis <i class="fas fa-arrow-right"></i>
+            </a>
           </div>
         </div>
       </main>
