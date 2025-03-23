@@ -37,8 +37,8 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 nltk.download('stopwords')
 nltk.download('wordnet')
 
-searchEngine_API = 'AIzaSyCAeR7_6TTKzoJmSwmOuHZvKcVg_lhqvCc'
-searchEngine_Id = '758ad3e78879f0e08'
+searchEngine_API = 'AIzaSyAJfOxvSEfonJE_l96vHdL_5ega41fgutc'
+searchEngine_Id = 'd78348c105b614496'
 
 # Render HTML Pages
 @app.route('/')
