@@ -493,7 +493,7 @@ def extract_embeddings(code_snippets):
         logging.error(f"Error extracting embeddings: {str(e)}", exc_info=True)
         return np.array([])
 
-def cluster_code_files(files, threshold=0.85):
+def cluster_code_files(files, threshold=0.875):
     try:
         if not files or not all(isinstance(f, dict) for f in files):
             logging.error("Invalid file format received for clustering.")
@@ -697,6 +697,86 @@ def get_all_assignment_tables():
     except Exception as e:
         logging.error(f"Error retrieving assignment tables: {str(e)}")
         return []
+    
+def process_assignment_files(files):
+    """
+    Process files for assignment upload, supporting multiple file types and folders
+    
+    Args:
+        files: List of uploaded files or files in a folder
+    
+    Returns:
+        List of processed file dictionaries with name and content
+    """
+    processed_files = []
+    
+    for file in files:
+        # Handle individual file uploads
+        if hasattr(file, 'filename'):
+            filename = file.filename
+            
+            # Save temporary file if needed
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            
+            try:
+                # Text extraction based on file type
+                if filename.endswith('.txt'):
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        text = f.read()
+                elif filename.endswith('.docx'):
+                    doc = Document(file_path)
+                    text = "\n".join([para.text for para in doc.paragraphs])
+                elif filename.endswith('.pdf'):
+                    with open(file_path, 'rb') as f:
+                        pdf_reader = PyPDF2.PdfReader(f)
+                        text = "\n".join([page.extract_text() for page in pdf_reader.pages])
+                else:
+                    logging.warning(f"Unsupported file type: {filename}")
+                    continue
+                
+                processed_files.append({
+                    "name": filename,
+                    "content": text
+                })
+            
+            except Exception as e:
+                logging.error(f"Error processing file {filename}: {str(e)}")
+            
+            finally:
+                # Remove temporary file
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+        
+        # Handle folder uploads (assuming file is actually a path string)
+        elif isinstance(file, str) and os.path.isdir(file):
+            for root, _, files in os.walk(file):
+                for filename in files:
+                    filepath = os.path.join(root, filename)
+                    
+                    # Process only txt, docx, and pdf files
+                    if filename.endswith(('.txt', '.docx', '.pdf')):
+                        try:
+                            if filename.endswith('.txt'):
+                                with open(filepath, 'r', encoding='utf-8') as f:
+                                    text = f.read()
+                            elif filename.endswith('.docx'):
+                                doc = Document(filepath)
+                                text = "\n".join([para.text for para in doc.paragraphs])
+                            elif filename.endswith('.pdf'):
+                                with open(filepath, 'rb') as f:
+                                    pdf_reader = PyPDF2.PdfReader(f)
+                                    text = "\n".join([page.extract_text() for page in pdf_reader.pages])
+                            
+                            processed_files.append({
+                                "name": filename,
+                                "content": text
+                            })
+                        
+                        except Exception as e:
+                            logging.error(f"Error processing file {filename}: {str(e)}")
+    
+    return processed_files
 
 @app.route('/assignment_func', methods=['GET', 'POST'])
 def assignment_func():
