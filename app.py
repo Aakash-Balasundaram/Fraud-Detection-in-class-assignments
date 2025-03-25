@@ -21,6 +21,8 @@ import pdfkit
 from datetime import datetime
 import sqlite3
 from sklearn.preprocessing import normalize
+from io import BytesIO
+import base64
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -787,7 +789,6 @@ def assignment_func():
         if not assignment_name or not files_data:
             return jsonify({'error': 'Assignment name and files are required'}), 400
         
-        # Create table for the assignment
         table_name = create_assignment_table(assignment_name)
         if not table_name:
             return jsonify({'error': 'Failed to create assignment table'}), 500
@@ -795,8 +796,32 @@ def assignment_func():
         results = []
         for file in files_data:
             file_name = file.get("name", "")
-            text = file.get("content", "")
-            if not file_name or not text:
+            content = file.get("content", "")
+            if not file_name or not content:
+                logging.warning(f"Skipping {file_name}: No name or content provided")
+                continue
+            
+            # Handle file content based on type
+            if file_name.endswith('.txt'):
+                text = content  # Already read as text by FileReader
+            elif file_name.endswith('.pdf'):
+                try:
+                    if isinstance(content, str) and content.startswith('data:application/pdf;base64,'):
+                        base64_string = content.split(',')[1]
+                        pdf_bytes = base64.b64decode(base64_string)
+                    else:
+                        logging.error(f"Unexpected PDF content format for {file_name}: {content[:50]}")
+                        continue
+                    text = extract_text_from_pdf_buffer(pdf_bytes)
+                except Exception as e:
+                    logging.error(f"Failed to process PDF {file_name}: {str(e)}")
+                    text = ""
+            else:
+                logging.warning(f"Unsupported file type: {file_name}")
+                continue
+            
+            if not text:
+                logging.warning(f"No text extracted from {file_name}")
                 continue
             
             # AI Detection using ai_refined endpoint
@@ -810,7 +835,7 @@ def assignment_func():
                 logging.error(f"AI detection failed for {file_name}: {ai_response['error']}")
                 ai_percentage = 0.0
             else:
-                ai_percentage = round(float(ai_response["ai_score"]) * 100, 2)  # Convert to percentage
+                ai_percentage = round(float(ai_response["ai_score"]) * 100, 2)
             
             # Plagiarism Detection
             try:
@@ -820,12 +845,9 @@ def assignment_func():
                 logging.error(f"Plagiarism detection failed for {file_name}: {str(e)}")
                 plagiarism_percentage = 0.0
             
-            # Store in database
             insert_analysis_results(table_name, file_name, ai_percentage, plagiarism_percentage)
-            
-            # Fetch the latest results from the database to include the ID
             stored_results = get_analysis_results(table_name)
-            results = stored_results  # Update results with the latest from the database
+            results = stored_results
         
         return jsonify({
             "table_name": table_name,
@@ -833,7 +855,6 @@ def assignment_func():
         })
     
     elif request.method == 'GET':
-        # If an assignment_name is provided, fetch results for that assignment
         assignment_name = request.args.get("assignment_name", "")
         if assignment_name:
             table_name = re.sub(r'[^a-zA-Z0-9_]', '_', assignment_name)
@@ -845,7 +866,6 @@ def assignment_func():
                 "results": results
             })
         else:
-            # Fetch all assignment tables
             tables = get_all_assignment_tables()
             all_assignments = {}
             for table in tables:

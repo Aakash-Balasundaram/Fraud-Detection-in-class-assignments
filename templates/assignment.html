@@ -374,7 +374,6 @@
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
         }
         
-        /* Download button styling */
         .download-btn {
             padding: 0.8rem 1.5rem;
             border-radius: 8px;
@@ -486,17 +485,11 @@
                         <button class="btn">
                             <i class="fas fa-folder-open"></i> Select Folder
                         </button>
-                        <input type="file" id="folderInput" webkitdirectory directory multiple accept=".txt" class="file-input">
+                        <input type="file" id="folderInput" webkitdirectory directory multiple accept=".txt,.pdf" class="file-input">
                     </div>
                 </div>
                 
                 <input type="text" id="assignmentName" class="assignment-input" placeholder="Enter Assignment Name">
-                
-                <div style="text-align: center;">
-                    <button id="checkButton" class="btn">
-                        <i class="fas fa-check-circle"></i> Check
-                    </button>
-                </div>
             </div>
             
             <div class="loading" id="loadingIndicator">
@@ -535,62 +528,57 @@
         </div>
     </div>
     
-    <!-- Include jsPDF library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     
     <script>
         document.getElementById("folderInput").addEventListener("change", function() {
             const files = Array.from(this.files);
-            if (files.length > 0) {
-                console.log("Selected files:", files.map(file => file.name));
-            }
-        });
-    
-        document.getElementById("checkButton").addEventListener("click", function() {
-            const files = document.getElementById("folderInput").files;
             const assignmentName = document.getElementById("assignmentName").value.trim();
             const loadingIndicator = document.getElementById("loadingIndicator");
             const resultsCard = document.getElementById("resultsCard");
             const resultsTableBody = document.getElementById("resultsTable").querySelector("tbody");
             const errorMessage = document.getElementById("errorMessage");
-    
+
             if (files.length === 0) {
-                errorMessage.textContent = "Please upload some files first.";
+                errorMessage.textContent = "Please upload some files.";
                 errorMessage.style.display = "block";
                 return;
             }
-    
+
             if (!assignmentName) {
                 errorMessage.textContent = "Please enter an assignment name.";
                 errorMessage.style.display = "block";
                 return;
             }
-    
-            // Show confirmation dialog
+
             const confirmed = confirm("Are you sure you want to analyze the selected files? This process cannot be undone.");
             if (!confirmed) {
                 errorMessage.textContent = "File analysis cancelled.";
                 errorMessage.style.display = "block";
                 return;
             }
-    
+
             errorMessage.style.display = "none";
             resultsCard.style.display = "none";
             resultsTableBody.innerHTML = "";
             loadingIndicator.style.display = "block";
-    
+
             const readerPromises = Array.from(files).map(file => {
-                return new Promise(resolve => {
-                    let reader = new FileReader();
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
                     reader.onload = () => resolve({ name: file.name, content: reader.result });
-                    reader.readAsText(file);
+                    reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+                    if (file.name.endsWith('.txt')) {
+                        reader.readAsText(file);
+                    } else if (file.name.endsWith('.pdf')) {
+                        reader.readAsDataURL(file); // Use readAsDataURL for PDFs to ensure base64 encoding
+                    }
                 });
             });
-    
+
             Promise.all(readerPromises).then(filesData => {
-                // Log file names to console on client side after confirmation
-                console.log("Confirmed files to be analyzed:", filesData.map(file => file.name));
+                console.log("Files to be analyzed:", filesData.map(file => file.name));
                 fetch("/assignment_func", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -606,7 +594,6 @@
                     }
                     resultsCard.style.display = "block";
                     
-                    // Add index/ID column to results
                     data.results.forEach((result, index) => {
                         const row = document.createElement("tr");
                         row.innerHTML = `
@@ -624,72 +611,52 @@
                     errorMessage.style.display = "block";
                     console.error("Error:", error);
                 });
+            }).catch(error => {
+                loadingIndicator.style.display = "none";
+                errorMessage.textContent = "Error reading files: " + error.message;
+                errorMessage.style.display = "block";
+                console.error("File read error:", error);
             });
         });
-        
-        // PDF Download Functionality
+
         document.getElementById("downloadPdfButton").addEventListener("click", function() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
-            // Get assignment name
             const assignmentName = document.getElementById("assignmentName").value.trim();
             const currentDate = new Date().toLocaleDateString();
             
-            // Add title
             doc.setFontSize(18);
             doc.text(`Assignment Analysis: ${assignmentName}`, 14, 20);
-            
-            // Add date
             doc.setFontSize(12);
             doc.text(`Generated on: ${currentDate}`, 14, 30);
             
-            // Extract data from table
             const table = document.getElementById("resultsTable");
             const tableData = [];
             const tableHeaders = [];
             
-            // Get headers
             const headerRow = table.querySelector("thead tr");
             const headerCells = headerRow.querySelectorAll("th");
-            headerCells.forEach(cell => {
-                tableHeaders.push(cell.textContent);
-            });
+            headerCells.forEach(cell => tableHeaders.push(cell.textContent));
             
-            // Get data rows
             const rows = table.querySelectorAll("tbody tr");
             rows.forEach(row => {
                 const rowData = [];
                 const cells = row.querySelectorAll("td");
-                cells.forEach(cell => {
-                    rowData.push(cell.textContent);
-                });
+                cells.forEach(cell => rowData.push(cell.textContent));
                 tableData.push(rowData);
             });
             
-            // Generate table in PDF
             doc.autoTable({
                 head: [tableHeaders],
                 body: tableData,
                 startY: 40,
                 theme: 'grid',
-                styles: {
-                    fontSize: 10,
-                    cellPadding: 3,
-                    lineColor: [80, 80, 80],
-                    lineWidth: 0.1
-                },
-                headStyles: {
-                    fillColor: [67, 97, 238],
-                    textColor: 255,
-                    fontStyle: 'bold'
-                },
-                alternateRowStyles: {
-                    fillColor: [240, 240, 250]
-                }
+                styles: { fontSize: 10, cellPadding: 3, lineColor: [80, 80, 80], lineWidth: 0.1 },
+                headStyles: { fillColor: [67, 97, 238], textColor: 255, fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [240, 240, 250] }
             });
             
-            // Save PDF
             doc.save(`${assignmentName}_analysis_results.pdf`);
         });
     </script>
