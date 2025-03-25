@@ -495,7 +495,7 @@ def extract_embeddings(code_snippets):
         logging.error(f"Error extracting embeddings: {str(e)}", exc_info=True)
         return np.array([])
 
-def cluster_code_files(files, threshold=0.85):
+def cluster_code_files(files, threshold=0.875):
     try:
         if not files or not all(isinstance(f, dict) for f in files):
             logging.error("Invalid file format received for clustering.")
